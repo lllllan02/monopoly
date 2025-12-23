@@ -11,6 +11,8 @@ install:
 
 # 启动服务端
 server:
+	@echo "检查并清理端口 3000..."
+	@lsof -ti:3000 | xargs kill -9 2>/dev/null || true
 	@echo "正在启动服务端 (http://0.0.0.0:3000)..."
 	cd server && npm run dev
 

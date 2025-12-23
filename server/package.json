@@ -2,6 +2,7 @@
   "name": "server",
   "version": "1.0.0",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
@@ -16,6 +17,7 @@
     "express": "^5.2.1",
     "lodash": "^4.17.21",
     "lowdb": "^7.0.1",
-    "socket.io": "^4.8.2"
+    "socket.io": "^4.8.2",
+    "uuid": "^13.0.0"
   }
 }
