@@ -80,17 +80,23 @@ app.post('/api/themes', async (req, res) => {
     utilityMultipliers: req.body.utilityMultipliers || [4, 10]
   };
 
-  // 自动为新主题创建一个起点地块
-  const startTile = {
-    id: uuidv4(),
-    name: '起点',
-    themeId: themeId,
-    type: 'start',
-    description: '游戏的起点，路过此地可领取奖励。'
-  };
+  // 自动为新主题创建全套内置地块 (Default Tiles)
+  const themeId = newTheme.id;
+  const defaultTiles = [
+    { id: uuidv4(), name: '起点', themeId, type: 'start', isDefault: true, description: '游戏的起点，路过此地可领取奖励。' },
+    { id: uuidv4(), name: '监狱', themeId, type: 'jail', isDefault: true, description: '违规者的暂居地，停留在此将面临禁足。' },
+    { id: uuidv4(), name: '车站 A', themeId, type: 'station', isDefault: true, price: 200, description: '枢纽车站，拥有越多收益越高。' },
+    { id: uuidv4(), name: '车站 B', themeId, type: 'station', isDefault: true, price: 200, description: '枢纽车站，拥有越多收益越高。' },
+    { id: uuidv4(), name: '车站 C', themeId, type: 'station', isDefault: true, price: 200, description: '枢纽车站，拥有越多收益越高。' },
+    { id: uuidv4(), name: '车站 D', themeId, type: 'station', isDefault: true, price: 200, description: '枢纽车站，拥有越多收益越高。' },
+    { id: uuidv4(), name: '自来水厂', themeId, type: 'utility', isDefault: true, price: 150, description: '公用事业，根据骰子点数收取租金。' },
+    { id: uuidv4(), name: '电力公司', themeId, type: 'utility', isDefault: true, price: 150, description: '公用事业，根据骰子点数收取租金。' },
+    { id: uuidv4(), name: '命运', themeId, type: 'fate', isDefault: true, description: '命运格，停留在此将抽取一张命运卡。' },
+    { id: uuidv4(), name: '机会', themeId, type: 'chance', isDefault: true, description: '机会格，停留在此将抽取一张机会卡。' }
+  ];
 
   dbThemes.data.themes.push(newTheme);
-  dbProperties.data.properties.push(startTile);
+  dbProperties.data.properties.push(...defaultTiles);
   
   await Promise.all([dbThemes.write(), dbProperties.write()]);
   res.status(201).json(newTheme);
@@ -124,6 +130,13 @@ app.get('/api/properties', (req, res) => {
 });
 
 app.post('/api/properties', async (req, res) => {
+  const { type, isDefault } = req.body;
+  
+  // 强制校验：非内置创建只能是 normal 类型
+  if (!isDefault && type !== 'normal') {
+    return res.status(400).json({ message: '除系统内置外，自定义地块只能是普通土地类型' });
+  }
+
   const newProperty = {
     id: uuidv4(),
     ...req.body

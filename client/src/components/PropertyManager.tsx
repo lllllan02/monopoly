@@ -145,7 +145,10 @@ const PropertyManager: React.FC = () => {
           normal: { color: 'blue', text: '土地' },
           station: { color: 'volcano', text: '车站' },
           utility: { color: 'cyan', text: '公用' },
-          start: { color: 'gold', text: '起点' }
+          start: { color: 'gold', text: '起点' },
+          jail: { color: 'red', text: '监狱' },
+          fate: { color: 'purple', text: '命运' },
+          chance: { color: 'orange', text: '机会' }
         };
         const item = config[record.type] || config.normal;
         return <Tag bordered={false} color={item.color} style={{ borderRadius: '4px', margin: 0, fontSize: '12px', padding: '0 8px' }}>{item.text}</Tag>;
@@ -173,10 +176,17 @@ const PropertyManager: React.FC = () => {
       minWidth: 320,
       render: (_: any, record: Property) => {
         if (!record) return null;
-        if (record.type === 'start') {
+        if (record.type === 'start' || record.type === 'jail' || record.type === 'fate' || record.type === 'chance') {
+          const typeMap: Record<string, { color: string, label: string }> = {
+            start: { color: 'green', label: '🚩 非售卖资产（奖励点）' },
+            jail: { color: 'volcano', label: '🔒 非售卖资产（惩罚点）' },
+            fate: { color: 'purple', label: '🔮 非售卖资产（随机事件）' },
+            chance: { color: 'orange', label: '🎲 非售卖资产（随机事件）' }
+          };
+          const config = typeMap[record.type] || typeMap.start;
           return (
-            <Tag bordered={false} color="green" style={{ borderRadius: '6px', padding: '4px 12px', fontSize: '13px' }}>
-              🚩 非售卖资产（奖励点）
+            <Tag bordered={false} color={config.color} style={{ borderRadius: '6px', padding: '4px 12px', fontSize: '13px' }}>
+              {config.label}
             </Tag>
           );
         }
@@ -225,13 +235,13 @@ const PropertyManager: React.FC = () => {
       render: (_: any, record: Property) => (
         <Space>
           <Button type="text" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)} />
-          <Tooltip title={record.type === 'start' ? "起点地块不可克隆" : "克隆地块"}>
+          <Tooltip title={record.isDefault ? "内置地块不可克隆" : "克隆地块"}>
             <Button 
               type="text" 
               size="small" 
               icon={<CopyOutlined />} 
               onClick={() => handleClone(record)} 
-              disabled={record.type === 'start'}
+              disabled={record.isDefault}
             />
           </Tooltip>
           <Popconfirm 
@@ -239,15 +249,15 @@ const PropertyManager: React.FC = () => {
             onConfirm={() => handleDelete(record.id)}
             okText="确定"
             cancelText="取消"
-            disabled={record.type === 'start'}
+            disabled={record.isDefault}
           >
-            <Tooltip title={record.type === 'start' ? "主题起点地块不可删除" : ""}>
+            <Tooltip title={record.isDefault ? "系统内置地块不可删除" : ""}>
               <Button 
                 type="text" 
                 size="small" 
                 danger 
                 icon={<DeleteOutlined />} 
-                disabled={record.type === 'start'}
+                disabled={record.isDefault}
               />
             </Tooltip>
           </Popconfirm>
@@ -304,15 +314,44 @@ const PropertyManager: React.FC = () => {
               ),
               children: (
                 <div style={{ padding: '24px 0 40px 0' }}>
-                  <Table 
-                    columns={columns} 
-                    dataSource={(properties || []).filter(p => p && p.themeId === t.id)} 
-                    rowKey="id" 
-                    bordered={false} 
-                    pagination={{ pageSize: 10, showSizeChanger: false }} 
-                    size="middle"
-                    style={{ width: '100%' }}
-                  />
+                  <div style={{ marginBottom: 32 }}>
+                    <Space size={8} style={{ marginBottom: 16 }}>
+                      <div style={{ width: 4, height: 16, background: '#722ed1', borderRadius: 2 }} />
+                      <Text strong style={{ fontSize: '15px' }}>系统内置地块</Text>
+                      <Tooltip title="这些地块是主题的核心组成部分，不可删除或克隆，但可以编辑其背景描述。">
+                        <InfoCircleOutlined style={{ color: '#bfbfbf', fontSize: '13px' }} />
+                      </Tooltip>
+                    </Space>
+                    <Table 
+                      columns={columns} 
+                      dataSource={(properties || []).filter(p => p && p.themeId === t.id && p.isDefault)} 
+                      rowKey="id" 
+                      bordered={false} 
+                      pagination={false}
+                      size="middle"
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+
+                  <div>
+                    <Space size={8} style={{ marginBottom: 16 }}>
+                      <div style={{ width: 4, height: 16, background: '#1890ff', borderRadius: 2 }} />
+                      <Text strong style={{ fontSize: '15px' }}>自定义扩展地块</Text>
+                      <Tooltip title="您可以根据需要自由添加、修改或删除这些地块。">
+                        <InfoCircleOutlined style={{ color: '#bfbfbf', fontSize: '13px' }} />
+                      </Tooltip>
+                    </Space>
+                    <Table 
+                      columns={columns} 
+                      dataSource={(properties || []).filter(p => p && p.themeId === t.id && !p.isDefault)} 
+                      rowKey="id" 
+                      bordered={false} 
+                      pagination={{ pageSize: 10, showSizeChanger: false }} 
+                      size="middle"
+                      style={{ width: '100%' }}
+                      locale={{ emptyText: '暂无自定义地块，点击上方“创建新地块”开始添加。' }}
+                    />
+                  </div>
                 </div>
               )
             }))}
@@ -358,12 +397,15 @@ const PropertyManager: React.FC = () => {
                   <Select 
                     size="large" 
                     style={{ borderRadius: '8px' }}
-                    disabled={editingProperty?.type === 'start'}
+                    disabled={true} // 全面禁止手动修改地块类型
                   >
                     <Select.Option value="normal">🏠 普通土地 (可盖楼)</Select.Option>
                     <Select.Option value="station">🚂 交通枢纽 (车站)</Select.Option>
                     <Select.Option value="utility">💡 公用事业 (水/电)</Select.Option>
-                    <Select.Option value="start" disabled={editingProperty?.type !== 'start'}>🚩 起点 (系统预设)</Select.Option>
+                    <Select.Option value="jail">🚔 监狱 (违规禁足)</Select.Option>
+                    <Select.Option value="fate">🔮 命运 (随机事件)</Select.Option>
+                    <Select.Option value="chance">🎲 机会 (随机事件)</Select.Option>
+                    <Select.Option value="start">🚩 起点 (系统预设)</Select.Option>
                   </Select>
                 </Form.Item>
               </Col>
@@ -455,10 +497,16 @@ const PropertyManager: React.FC = () => {
                   </Col>
                 </Row>
               </div>
-            ) : currentType === 'start' ? (
-              <div style={{ padding: '24px', background: '#f6ffed', border: '1px solid #b7eb8f', borderRadius: '12px' }}>
+            ) : (currentType === 'start' || currentType === 'jail' || currentType === 'fate' || currentType === 'chance') ? (
+              <div style={{ padding: '24px', background: (currentType === 'start' || currentType === 'fate' || currentType === 'chance') ? '#f6ffed' : '#fff1f0', border: `1px solid ${(currentType === 'start' || currentType === 'fate' || currentType === 'chance') ? '#b7eb8f' : '#ffa39e'}`, borderRadius: '12px' }}>
                 <Text type="secondary">
-                  起点地块无需设置独立价格。路过奖励已在 <Text strong style={{ color: '#52c41a' }}>[经济体系] - [核心规则配置]</Text> 中全局定义。
+                  {currentType === 'start' ? (
+                    <>起点地块无需设置独立价格。路过奖励已在 <Text strong style={{ color: '#52c41a' }}>[经济体系] - [核心规则配置]</Text> 中全局定义。</>
+                  ) : currentType === 'jail' ? (
+                    <>监狱地块无需设置价格。保释金与关押时长已在 <Text strong style={{ color: '#ff4d4f' }}>[经济体系] - [核心规则配置]</Text> 中全局定义。</>
+                  ) : (
+                    <>{currentType === 'fate' ? '命运' : '机会'}点无需设置价格。卡组逻辑将在 <Text strong style={{ color: '#52c41a' }}>[命运/机会卡]</Text> 模块中统一管理。</>
+                  )}
                 </Text>
               </div>
             ) : (
