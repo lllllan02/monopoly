@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { Table, Button, Modal, Form, Input, Space, message, Popconfirm, Tag, Typography, Divider, InputNumber, Row, Col, Card, Select } from 'antd';
-import { RocketOutlined, BankOutlined, EnvironmentOutlined, PlusOutlined, DeleteOutlined, BuildOutlined } from '@ant-design/icons';
+import React, { useEffect, useState, useMemo } from 'react';
+import { Table, Button, Modal, Form, Input, Space, message, Popconfirm, Typography, InputNumber, Row, Col, Card } from 'antd';
+import { RocketOutlined, BankOutlined, EnvironmentOutlined, PlusOutlined, BuildOutlined } from '@ant-design/icons';
 import { type Theme, ThemeService } from '../services/ThemeService';
 import { PropertyService } from '../services/PropertyService';
 import { MapService } from '../services/MapService';
@@ -71,6 +71,7 @@ const ThemeManager: React.FC = () => {
       message.success('删除成功');
       fetchThemesAndStats();
     } catch (error) {
+      console.error('Delete error:', error);
       message.error('删除失败');
     }
   };
@@ -141,7 +142,7 @@ const ThemeManager: React.FC = () => {
       title: '操作',
       key: 'action',
       width: 120,
-      align: 'right',
+      align: 'right' as const,
       render: (_: any, record: ThemeWithStats) => (
         <Space size="middle">
           <Button type="link" size="small" style={{ padding: 0 }} onClick={() => handleEdit(record)}>编辑</Button>
@@ -160,7 +161,7 @@ const ThemeManager: React.FC = () => {
   ];
 
   return (
-    <div className="admin-content-fade-in" style={{ padding: 0, background: '#fff', minHeight: '100%' }}>
+    <div className="admin-content-fade-in" style={{ padding: 0, background: '#fff', minHeight: '100vh' }}>
       <div style={{ padding: '32px 40px 24px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: '#fafafa', borderBottom: '1px solid #f0f0f0', marginBottom: 24 }}>
         <div>
           <Typography.Title level={2} style={{ marginBottom: 12, fontSize: '28px', fontWeight: 700, letterSpacing: '-0.5px' }}>
@@ -239,7 +240,7 @@ const ThemeManager: React.FC = () => {
                   <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
                     <Space><RocketOutlined style={{ color: '#fa8c16' }} /><span>车站 (越多越贵逻辑)</span></Space>
                     <Typography.Text type="secondary" style={{ fontSize: '11px', fontWeight: 'normal' }}>
-                      解释：这是一种“成套”资产。玩家每多拿下一座车站，该主题下所有车站的租金都会集体涨价。
+                      解释：这是一种“成套”资产。玩家每多拿拿下座车站，该主题下所有车站的租金都会集体涨价。
                     </Typography.Text>
                   </div>
                 }

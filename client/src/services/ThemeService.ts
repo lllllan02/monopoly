@@ -20,10 +20,7 @@ export const ThemeService = {
     const res = await fetch(`${API_BASE}/themes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...theme,
-        specialTiles: theme.specialTiles || []
-      }),
+      body: JSON.stringify(theme),
     });
     return res.json();
   },
