@@ -4,7 +4,8 @@ export interface Property {
   themeId: string;
   type: 'normal' | 'station' | 'utility';
   rentLevelId?: string; // 仅普通土地使用
-  price?: number;       // 车站和公共事业直接设置价格
+  price?: number;       // 购买价格（所有类型均可设置）
+  houseCost?: number;   // 建设费用（仅普通土地使用）
   description?: string;
 }
 

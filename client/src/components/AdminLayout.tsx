@@ -37,7 +37,7 @@ const AdminLayout: React.FC = () => {
     {
       key: '/admin/properties',
       icon: <BankOutlined />,
-      label: '房产库管理',
+      label: '地块管理',
     },
     {
       key: '/admin/maps',

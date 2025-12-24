@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { 
   Table, Button, Modal, Form, Input, InputNumber, 
-  Space, message, Tag, Select, Tooltip, Row, Col, Typography, Tabs, Popconfirm
+  Space, message, Tag, Select, Tooltip, Row, Col, Typography, Tabs, Popconfirm, Card, Divider
 } from 'antd';
 import { 
   BankOutlined, 
@@ -10,13 +10,15 @@ import {
   EditOutlined,
   DeleteOutlined,
   PlusOutlined,
-  BuildOutlined
+  BuildOutlined,
+  RocketOutlined
 } from '@ant-design/icons';
 import { type Property, PropertyService } from '../services/PropertyService';
 import { type Theme, ThemeService } from '../services/ThemeService';
 import { type RentLevel, RentLevelService } from '../services/RentLevelService';
 
 const { TextArea } = Input;
+const { Text, Title, Paragraph } = Typography;
 
 const PropertyManager: React.FC = () => {
   const [properties, setProperties] = useState<Property[]>([]);
@@ -116,71 +118,110 @@ const PropertyManager: React.FC = () => {
 
   const columns = [
     { 
-      title: '房产名称', 
+      title: '地块名称', 
       dataIndex: 'name', 
       key: 'name',
+      width: 280,
       render: (text: string, record: Property) => (
-        <Space size={12} style={{ paddingLeft: 16 }}>
-          <Typography.Text strong style={{ fontSize: '15px' }}>{text || '未命名'}</Typography.Text>
-          {record?.description && (
-            <Tooltip title={record.description}>
-              <InfoCircleOutlined style={{ color: '#bfbfbf', fontSize: '12px' }} />
-            </Tooltip>
-          )}
-        </Space>
+        <div style={{ paddingLeft: 16 }}>
+          <Space size={8} style={{ marginBottom: 4 }}>
+            <Typography.Text strong style={{ fontSize: '16px', color: '#1a1a1a' }}>{text || '未命名'}</Typography.Text>
+            {record?.description && (
+              <Tooltip title={record.description}>
+                <InfoCircleOutlined style={{ color: '#bfbfbf', fontSize: '13px' }} />
+              </Tooltip>
+            )}
+          </Space>
+          <div style={{ fontSize: '12px', color: '#8c8c8c' }}>ID: {record.id}</div>
+        </div>
       )
     },
     { 
-      title: '经济等级 / 价格', 
-      key: 'priceInfo',
+      title: '类型', 
+      key: 'type',
+      width: 120,
       render: (_: any, record: Property) => {
-        if (record?.type === 'normal') {
-          const level = (rentLevels || []).find(l => l.id === record.rentLevelId);
-          if (!level) return <Typography.Text type="secondary" italic>未关联等级</Typography.Text>;
-          return (
-            <Space size={12}>
-              <div style={{ width: 10, height: 10, borderRadius: '50%', background: level.color || '#ccc' }} />
-              <Typography.Text strong>{level.name || '未知等级'}</Typography.Text>
-              <Typography.Text type="secondary" style={{ fontSize: '12px' }}>(¥{(level.purchasePrice || 0).toLocaleString()})</Typography.Text>
-            </Space>
-          );
-        }
-        return (
-          <Space size={8}>
-            <Typography.Text type="secondary" style={{ fontSize: '12px' }}>买入价:</Typography.Text>
-            <Typography.Text strong>¥{(record?.price || 0).toLocaleString()}</Typography.Text>
-          </Space>
-        );
+        const config: Record<string, { color: string, text: string }> = {
+          normal: { color: 'blue', text: '土地' },
+          station: { color: 'volcano', text: '车站' },
+          utility: { color: 'cyan', text: '公用' }
+        };
+        const item = config[record.type] || config.normal;
+        return <Tag bordered={false} color={item.color} style={{ borderRadius: '4px', margin: 0, fontSize: '12px', padding: '0 8px' }}>{item.text}</Tag>;
       }
     },
     { 
-      title: '类型', 
-      dataIndex: 'type', 
-      key: 'type',
-      width: 140,
-      render: (type: string) => {
-        const config: Record<string, { color: string, text: string }> = {
-          normal: { color: 'blue', text: '普通土地' },
-          station: { color: 'volcano', text: '交通枢纽' },
-          utility: { color: 'cyan', text: '公用事业' }
-        };
-        const item = config[type] || config.normal;
-        return <Tag bordered={false} color={item.color} style={{ borderRadius: '4px' }}>{item.text}</Tag>;
+      title: '收益等级', 
+      key: 'rentLevel',
+      width: 220,
+      render: (_: any, record: Property) => {
+        if (record.type !== 'normal') return <Text type="secondary" style={{ fontSize: '12px' }}>-</Text>;
+        const level = (rentLevels || []).find(l => l && l.id === record.rentLevelId);
+        return level ? (
+          <Space size={10}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: level.color || '#ccc' }} />
+            <Text style={{ color: '#595959', fontSize: '14px' }}>{level.name}</Text>
+          </Space>
+        ) : <Text type="secondary" italic style={{ fontSize: '12px' }}>未关联等级</Text>;
+      }
+    },
+    { 
+      title: '价格配置 (购买 / 建设)', 
+      key: 'prices',
+      // 让价格配置作为弹性列，吸收剩余空间，同时设置一个合理的最小宽度
+      minWidth: 320,
+      render: (_: any, record: Property) => {
+        if (!record) return null;
+        if (record.type === 'normal') {
+          return (
+            <div style={{ 
+              display: 'flex', 
+              background: '#fafafa', 
+              borderRadius: '8px', 
+              border: '1px solid #f0f0f0',
+              overflow: 'hidden',
+              width: 'fit-content'
+            }}>
+              <div style={{ padding: '4px 12px', borderRight: '1px solid #f0f0f0' }}>
+                <span style={{ fontSize: '10px', color: '#bfbfbf', display: 'block', lineHeight: 1.2 }}>购买地价</span>
+                <Text strong style={{ color: '#fa8c16', fontSize: '14px' }}>¥{(record.price || 0).toLocaleString()}</Text>
+              </div>
+              <div style={{ padding: '4px 12px', background: '#fff' }}>
+                <span style={{ fontSize: '10px', color: '#bfbfbf', display: 'block', lineHeight: 1.2 }}>每级建费</span>
+                <Text strong style={{ color: '#1890ff', fontSize: '14px' }}>¥{(record.houseCost || 0).toLocaleString()}</Text>
+              </div>
+            </div>
+          );
+        }
+        return (
+          <div style={{ 
+            display: 'inline-flex', 
+            flexDirection: 'column',
+            padding: '4px 12px',
+            background: '#fff7e6', 
+            borderRadius: '8px', 
+            border: '1px solid #ffd591',
+            minWidth: '120px'
+          }}>
+            <span style={{ fontSize: '10px', color: '#fa8c16', display: 'block', lineHeight: 1.2 }}>资产一口价</span>
+            <Text strong style={{ color: '#d46b08', fontSize: '14px' }}>¥{(record.price || 0).toLocaleString()}</Text>
+          </div>
+        );
       }
     },
     {
       title: '操作',
       key: 'action',
-      width: 160,
+      width: 110,
       align: 'right' as const,
       render: (_: any, record: Property) => (
         <Space>
           <Button type="text" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)} />
-          <Tooltip title="克隆房产">
+          <Tooltip title="克隆地块">
             <Button type="text" size="small" icon={<CopyOutlined />} onClick={() => handleClone(record)} />
           </Tooltip>
           <Popconfirm 
-            title="确定要删除这个房产吗？" 
+            title="确定要删除这个地块吗？" 
             onConfirm={() => handleDelete(record.id)}
             okText="确定"
             cancelText="取消"
@@ -198,10 +239,10 @@ const PropertyManager: React.FC = () => {
         <div>
           <Typography.Title level={2} style={{ marginBottom: 12, fontSize: '28px', fontWeight: 700, letterSpacing: '-0.5px' }}>
             <BankOutlined style={{ marginRight: 16, color: '#1890ff' }} />
-            房产库管理
+            地块管理
           </Typography.Title>
-          <Typography.Paragraph style={{ color: '#8c8c8c', fontSize: '15px', maxWidth: 600, marginBottom: 0 }}>
-            在此定义房产的元数据模型。关联经济等级模板后，房产将自动继承其买入价、租金曲线等核心经济规则。
+          <Typography.Paragraph style={{ color: '#8c8c8c', fontSize: '15px', maxWidth: 800, marginBottom: 0 }}>
+            在此定义地图上各种格子的元数据模型。您可以为每个地块（房产、车站、公用事业等）设置独特的价格与背景故事，并关联“经济体系”中的收益规则。
           </Typography.Paragraph>
         </div>
         <Button 
@@ -218,7 +259,7 @@ const PropertyManager: React.FC = () => {
             boxShadow: '0 4px 12px rgba(24, 144, 255, 0.25)'
           }}
         >
-          添加新房产
+          创建新地块
         </Button>
       </div>
       
@@ -261,82 +302,156 @@ const PropertyManager: React.FC = () => {
       </div>
 
       <Modal
-        title={editingProperty ? '编辑房产信息' : '添加新房产'}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 4, height: 24, background: '#1890ff', borderRadius: 2 }} />
+            <span style={{ fontSize: '20px', fontWeight: 700, color: '#1a1a1a' }}>{editingProperty ? '编辑地块信息' : '创建新地块'}</span>
+          </div>
+        }
         open={isModalVisible}
         onOk={handleOk}
         onCancel={() => setIsModalVisible(false)}
-        width={640}
+        width={720}
         destroyOnClose
-        okText="保存信息"
+        okText="保存配置"
         cancelText="取消"
+        styles={{ body: { padding: '24px 32px' } }}
       >
-        <Form form={form} layout="vertical" style={{ paddingTop: 20 }}>
-          <Row gutter={24}>
-            <Col span={14}>
-              <Form.Item name="name" label="房产名称" rules={[{ required: true, message: '请输入房产名称' }]}>
-                <Input placeholder="例如: 南京路 / 维多利亚港" size="large" />
-              </Form.Item>
-            </Col>
-            <Col span={10}>
-              <Form.Item name="type" label="房产类型" rules={[{ required: true }]}>
-                <Select size="large">
-                  <Select.Option value="normal">普通土地</Select.Option>
-                  <Select.Option value="station">交通枢纽 (车站)</Select.Option>
-                  <Select.Option value="utility">公用事业 (电/水)</Select.Option>
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={24}>
-            <Col span={12}>
-              <Form.Item name="themeId" label="所属主题" rules={[{ required: true }]}>
-                <Select size="large" placeholder="选择主题">
-                  {(themes || []).map(t => (
-                    <Select.Option key={t?.id} value={t?.id}>{t?.name}</Select.Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-            {currentType === 'normal' ? (
+        <Form form={form} layout="vertical">
+          {/* 基础信息区域 */}
+          <div style={{ marginBottom: 32 }}>
+            <Space size={8} style={{ marginBottom: 20 }}>
+              <BuildOutlined style={{ color: '#1890ff', fontSize: '18px' }} />
+              <Text strong style={{ fontSize: '16px', color: '#1a1a1a' }}>核心基础信息</Text>
+            </Space>
+            
+            <Form.Item name="name" label={<span style={{ fontWeight: 600, color: '#595959' }}>地块名称</span>} rules={[{ required: true, message: '请输入地块名称' }]}>
+              <Input placeholder="例如: 南京路 / 维多利亚港" size="large" style={{ borderRadius: '8px' }} />
+            </Form.Item>
+            
+            <Row gutter={20}>
               <Col span={12}>
-                <Form.Item 
-                  name="rentLevelId" 
-                  label="经济等级模板" 
-                  rules={[{ required: true, message: '普通土地必须关联等级' }]}
-                >
-                  <Select 
-                    size="large"
-                    placeholder={currentThemeId ? "选择对应等级" : "请先选择主题"} 
-                    disabled={!currentThemeId}
-                  >
-                    {(filteredRentLevels || []).map(l => (
-                      <Select.Option key={l?.id} value={l?.id}>{l?.name}</Select.Option>
+                <Form.Item name="type" label={<span style={{ fontWeight: 600, color: '#595959' }}>地块功能类型</span>} rules={[{ required: true }]}>
+                  <Select size="large" style={{ borderRadius: '8px' }}>
+                    <Select.Option value="normal">🏠 普通土地 (可盖楼)</Select.Option>
+                    <Select.Option value="station">🚂 交通枢纽 (车站)</Select.Option>
+                    <Select.Option value="utility">💡 公用事业 (水/电)</Select.Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="themeId" label={<span style={{ fontWeight: 600, color: '#595959' }}>所属游戏主题</span>} rules={[{ required: true }]}>
+                  <Select size="large" placeholder="选择地块所属主题" style={{ borderRadius: '8px' }}>
+                    {(themes || []).map(t => (
+                      <Select.Option key={t?.id} value={t?.id}>{t?.name}</Select.Option>
                     ))}
                   </Select>
                 </Form.Item>
               </Col>
+            </Row>
+          </div>
+
+          <Divider style={{ margin: '0 0 32px 0', borderStyle: 'dashed' }} />
+
+          {/* 经济参数区域 */}
+          <div style={{ marginBottom: 32 }}>
+            <Space size={8} style={{ marginBottom: 20 }}>
+              <BankOutlined style={{ color: '#fa8c16', fontSize: '18px' }} />
+              <Text strong style={{ fontSize: '16px', color: '#1a1a1a' }}>经济体系设定</Text>
+            </Space>
+
+            {currentType === 'normal' ? (
+              <div style={{ padding: '24px', background: '#fcfcfc', border: '1px solid #f0f0f0', borderRadius: '12px' }}>
+                <Row gutter={20}>
+                  <Col span={24}>
+                    <Form.Item 
+                      name="rentLevelId" 
+                      label={<span style={{ fontWeight: 600, color: '#595959' }}>租金收益等级模板</span>} 
+                      rules={[{ required: true, message: '普通土地必须关联等级' }]}
+                      extra={<Text type="secondary" style={{ fontSize: '12px' }}>决定该地块的租金回报率曲线</Text>}
+                    >
+                      <Select 
+                        size="large"
+                        placeholder={currentThemeId ? "请选择一个收益模板" : "请先在上文中选择主题"} 
+                        disabled={!currentThemeId}
+                        style={{ borderRadius: '8px' }}
+                      >
+                        {(filteredRentLevels || []).map(l => (
+                          <Select.Option key={l?.id} value={l?.id}>
+                            <Space>
+                              <div style={{ width: 10, height: 10, borderRadius: '50%', background: l.color }} />
+                              <Text strong>{l?.name}</Text>
+                            </Space>
+                          </Select.Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                  </Col>
+                </Row>
+                
+                <Row gutter={20}>
+                  <Col span={12}>
+                    <Form.Item 
+                      name="price" 
+                      label={<span style={{ fontWeight: 600, color: '#595959' }}>购买土地价格</span>} 
+                      rules={[{ required: true, message: '请输入价格' }]}
+                    >
+                      <InputNumber 
+                        style={{ width: '100%' }} 
+                        size="large"
+                        prefix="¥" 
+                        placeholder="0"
+                        formatter={value => value ? `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : ''}
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item 
+                      name="houseCost" 
+                      label={<span style={{ fontWeight: 600, color: '#595959' }}>单级建设费用</span>} 
+                      rules={[{ required: true, message: '请输入费用' }]}
+                    >
+                      <InputNumber 
+                        style={{ width: '100%' }} 
+                        size="large"
+                        prefix="¥" 
+                        placeholder="0"
+                        formatter={value => value ? `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : ''}
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
+              </div>
             ) : (
-              <Col span={12}>
+              <div style={{ padding: '24px', background: '#fff7e6', border: '1px solid #ffd591', borderRadius: '12px' }}>
                 <Form.Item 
                   name="price" 
-                  label="买入价格" 
+                  label={<span style={{ fontWeight: 600, color: '#fa8c16' }}>该地块买入一口价 (¥)</span>} 
                   rules={[{ required: true, message: '请输入价格' }]}
+                  style={{ marginBottom: 0 }}
                 >
                   <InputNumber 
                     style={{ width: '100%' }} 
                     size="large"
                     prefix="¥" 
-                    placeholder="0" 
+                    placeholder="0"
                     formatter={value => value ? `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : ''}
                   />
                 </Form.Item>
-              </Col>
+                <div style={{ fontSize: '12px', color: '#fa8c16', marginTop: 12, opacity: 0.8 }}>
+                  提示：特殊地块不具备建设升级功能，租金将根据“经济体系”中的全局规则计算。
+                </div>
+              </div>
             )}
-          </Row>
+          </div>
 
-          <Form.Item name="description" label="背景故事 / 描述">
-            <TextArea rows={3} placeholder="为这个地块写一段有趣的背景介绍..." />
+          {/* 描述区域 */}
+          <Form.Item name="description" label={<span style={{ fontWeight: 600, color: '#595959' }}>背景故事 / 地块描述</span>}>
+            <TextArea 
+              rows={4} 
+              placeholder="为这个地块写一段有趣的背景介绍，增加代入感... (可选)" 
+              style={{ borderRadius: '12px', padding: '12px' }} 
+            />
           </Form.Item>
         </Form>
       </Modal>

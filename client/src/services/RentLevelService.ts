@@ -3,8 +3,6 @@ export interface RentLevel {
   name: string;
   themeId: string;
   color: string;
-  purchasePrice: number;
-  houseCost: number;
   maxHouses: number;
   rentCurve: number[];
 }

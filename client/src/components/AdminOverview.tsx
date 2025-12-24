@@ -59,7 +59,7 @@ const AdminOverview: React.FC = () => {
           <Col xs={24} sm={12} lg={6}>
             <Card bordered={false} hoverable style={{ background: '#f9f0ff' }}>
               <Statistic
-                title="房产库总数"
+                title="地块库总数"
                 value={stats.properties}
                 valueStyle={{ color: '#722ed1' }}
                 prefix={<BankOutlined />}
@@ -108,9 +108,9 @@ const AdminOverview: React.FC = () => {
               <List
                 itemLayout="horizontal"
                 dataSource={[
-                  { title: '第一步：构建房产库', desc: '在房产管理中定义各种地块的价格和租金倍率值。', tag: '核心' },
-                  { title: '第二步：设计地图', desc: '利用插槽式设计，将房产布置在不同章节的地图中。', tag: '进阶' },
-                  { title: '第三步：配置卡组', desc: '编写命运和机会卡的文案与触发效果。', tag: '趣味' }
+                  { title: '第一步：构建地块库', desc: '在地块管理中定义各种格子（房产、车站等）的价格与背景。', tag: '核心' },
+                  { title: '第二步：设计经济体系', desc: '定义不同地段的租金回报率与特殊规则。', tag: '平衡' },
+                  { title: '第三步：设计地图', desc: '利用插槽式设计，将地块库中的内容布置在地图中。', tag: '进阶' }
                 ]}
                 renderItem={(item) => (
                   <List.Item>

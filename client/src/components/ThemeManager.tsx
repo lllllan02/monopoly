@@ -103,7 +103,7 @@ const ThemeManager: React.FC = () => {
         <Space direction="vertical" size={2} style={{ paddingLeft: 16 }}>
           <Typography.Text strong style={{ fontSize: '16px' }}>{text}</Typography.Text>
           <div style={{ fontSize: '12px', color: '#bfbfbf', marginTop: 4 }}>
-            包含 {record.propertyCount} 个房产 · {record.mapCount} 张地图
+            包含 {record.propertyCount} 个地块 · {record.mapCount} 张地图
           </div>
         </Space>
       )
@@ -115,7 +115,7 @@ const ThemeManager: React.FC = () => {
       render: (_: any, record: ThemeWithStats) => (
         <Space size={24}>
           <Space size={8} style={{ color: '#8c8c8c' }}>
-            <BankOutlined /> 房产: <Typography.Text strong>{record.propertyCount}</Typography.Text>
+            <BankOutlined /> 地块: <Typography.Text strong>{record.propertyCount}</Typography.Text>
           </Space>
           <Space size={8} style={{ color: '#8c8c8c' }}>
             <EnvironmentOutlined /> 地图: <Typography.Text strong>{record.mapCount}</Typography.Text>
@@ -133,7 +133,7 @@ const ThemeManager: React.FC = () => {
           <Button type="link" size="small" onClick={() => handleEdit(record)}>重命名</Button>
           <Popconfirm 
             title="确定要删除这个主题吗？" 
-            description={record.propertyCount > 0 ? `该主题下尚有 ${record.propertyCount} 个房产，删除后它们将失去分类。` : undefined}
+            description={record.propertyCount > 0 ? `该主题下尚有 ${record.propertyCount} 个地块，删除后它们将失去分类。` : undefined}
             onConfirm={() => handleDelete(record.id)}
             okText="确定"
             cancelText="取消"

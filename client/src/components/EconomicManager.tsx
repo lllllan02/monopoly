@@ -147,28 +147,11 @@ const EconomicManager: React.FC = () => {
     { 
       title: '等级模板', 
       key: 'info', 
-      width: 180,
+      width: 280,
       render: (record: RentLevel) => (
         <Space size={12} style={{ paddingLeft: 16 }}>
           <div style={{ width: 12, height: 12, borderRadius: '50%', background: record.color, boxShadow: '0 0 4px rgba(0,0,0,0.1)' }} />
           <Text strong style={{ fontSize: '15px', color: '#1a1a1a' }}>{record.name}</Text>
-        </Space>
-      )
-    },
-    { 
-      title: '价格配置 (购买 / 建设)', 
-      key: 'cost', 
-      width: 240,
-      render: (record: RentLevel) => (
-        <Space size={16}>
-          <div style={{ fontSize: '14px' }}>
-            <span style={{ color: '#8c8c8c', marginRight: 4 }}>购买: </span>
-            <Text strong>¥{record.purchasePrice.toLocaleString()}</Text>
-          </div>
-          <div style={{ fontSize: '14px' }}>
-            <span style={{ color: '#8c8c8c', marginRight: 4 }}>建费: </span>
-            <Text strong>¥{record.houseCost.toLocaleString()}</Text>
-          </div>
         </Space>
       )
     },
@@ -470,7 +453,7 @@ const EconomicManager: React.FC = () => {
               <Form.Item name="color" label={<span style={{ fontWeight: 600 }}>视觉标识色</span>} rules={[{ required: true }]}>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                   <Input type="color" style={{ width: 64, height: 40, padding: 2, borderRadius: '4px' }} />
-                  <Text type="secondary" style={{ fontSize: '12px', lineHeight: '1.2' }}>用于棋盘地块<br/>与房产卡片</Text>
+                  <Text type="secondary" style={{ fontSize: '12px', lineHeight: '1.2' }}>用于棋盘格子<br/>与资产卡片</Text>
                 </div>
               </Form.Item>
             </Col>
@@ -495,31 +478,6 @@ const EconomicManager: React.FC = () => {
           
           <Divider orientation="left" plain><Text type="secondary" style={{ fontSize: '13px', fontWeight: 500 }}>核心经济数值</Text></Divider>
           
-          <Row gutter={24}>
-            <Col span={12}>
-              <Form.Item name="purchasePrice" label={<span style={{ fontWeight: 600 }}>购买土地价格</span>} rules={[{ required: true }]}>
-                <InputNumber 
-                  style={{ width: '100%' }} 
-                  size="large" 
-                  prefix="¥" 
-                  placeholder="0"
-                  formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="houseCost" label={<span style={{ fontWeight: 600 }}>单级建筑费用</span>} rules={[{ required: true }]}>
-                <InputNumber 
-                  style={{ width: '100%' }} 
-                  size="large" 
-                  prefix="¥"
-                  placeholder="0"
-                  formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-
           <Card 
             title={<span style={{ fontSize: '13px', color: '#8c8c8c', fontWeight: 500 }}>租金收益梯度 (地块 → 1级 → ... → 满级)</span>} 
             size="small" 

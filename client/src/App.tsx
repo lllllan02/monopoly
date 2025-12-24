@@ -6,6 +6,8 @@ import ThemeManager from './components/ThemeManager';
 import EconomicManager from './components/EconomicManager';
 import './App.css';
 
+// alert('App is loading...');
+
 function App() {
   return (
     <BrowserRouter>
@@ -22,7 +24,7 @@ function App() {
             color: 'white'
           }}>
             <h1 style={{ fontSize: '3rem', marginBottom: '1rem' }}>大富翁联机版</h1>
-            <p style={{ fontSize: '1.2rem', marginBottom: '2rem' }}>局域网联机 · 策略博弈 · 房产经营</p>
+            <p style={{ fontSize: '1.2rem', marginBottom: '2rem' }}>局域网联机 · 策略博弈 · 地块经营</p>
             <div style={{ display: 'flex', gap: '20px' }}>
               <button style={{ 
                 padding: '12px 30px', 

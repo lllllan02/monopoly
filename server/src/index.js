@@ -105,26 +105,16 @@ app.delete('/api/themes/:id', async (req, res) => {
   res.status(204).send();
 });
 
-// --- 房产库管理 API ---
+// --- 地块管理 API ---
 app.get('/api/properties', (req, res) => {
   res.json(dbProperties.data.properties);
 });
 
 app.post('/api/properties', async (req, res) => {
-  const { name, themeId, type, rentLevelId, price, description } = req.body;
   const newProperty = {
     id: uuidv4(),
-    name: name || '未命名房产',
-    themeId: themeId || '', 
-    type: type || 'normal', 
-    description: description || ''
+    ...req.body
   };
-
-  if (type === 'normal') {
-    newProperty.rentLevelId = rentLevelId || '';
-  } else {
-    newProperty.price = Number(price) || 0;
-  }
 
   dbProperties.data.properties.push(newProperty);
   await dbProperties.write();
@@ -134,7 +124,7 @@ app.post('/api/properties', async (req, res) => {
 app.put('/api/properties/:id', async (req, res) => {
   const { id } = req.params;
   const index = dbProperties.data.properties.findIndex(p => p.id === id);
-  if (index === -1) return res.status(404).json({ message: '房产不存在' });
+  if (index === -1) return res.status(404).json({ message: '地块不存在' });
 
   dbProperties.data.properties[index] = {
     ...dbProperties.data.properties[index],
