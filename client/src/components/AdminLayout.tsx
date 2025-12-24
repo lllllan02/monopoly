@@ -32,7 +32,7 @@ const AdminLayout: React.FC = () => {
     {
       key: '/admin/rent-levels',
       icon: <PercentageOutlined />,
-      label: '经济等级',
+      label: '经济体系',
     },
     {
       key: '/admin/themes',

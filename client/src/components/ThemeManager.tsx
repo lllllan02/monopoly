@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { Table, Button, Modal, Form, Input, Space, message, Popconfirm, Typography, InputNumber, Row, Col, Card } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { Table, Button, Modal, Form, Input, Space, message, Popconfirm, Typography } from 'antd';
 import { RocketOutlined, BankOutlined, EnvironmentOutlined, PlusOutlined, BuildOutlined } from '@ant-design/icons';
 import { type Theme, ThemeService } from '../services/ThemeService';
 import { PropertyService } from '../services/PropertyService';
@@ -52,7 +52,7 @@ const ThemeManager: React.FC = () => {
     setEditingTheme(null);
     form.resetFields();
     form.setFieldsValue({ 
-      name: '', 
+      name: '',
       stationRent: [25, 50, 100, 200],
       utilityMultipliers: [4, 10]
     });
@@ -99,53 +99,38 @@ const ThemeManager: React.FC = () => {
       title: '主题名称', 
       dataIndex: 'name', 
       key: 'name',
-      width: 200,
       render: (text: string, record: ThemeWithStats) => (
-        <Space direction="vertical" size={2}>
+        <Space direction="vertical" size={2} style={{ paddingLeft: 16 }}>
           <Typography.Text strong style={{ fontSize: '16px' }}>{text}</Typography.Text>
-          <Space size={8} style={{ fontSize: '12px', color: '#bfbfbf' }}>
-            <Space size={4}><BankOutlined />{record.propertyCount}</Space>
-            <Space size={4}><EnvironmentOutlined />{record.mapCount}</Space>
+          <div style={{ fontSize: '12px', color: '#bfbfbf', marginTop: 4 }}>
+            包含 {record.propertyCount} 个房产 · {record.mapCount} 张地图
+          </div>
+        </Space>
+      )
+    },
+    {
+      title: '关联内容统计',
+      key: 'stats',
+      width: 300,
+      render: (_: any, record: ThemeWithStats) => (
+        <Space size={24}>
+          <Space size={8} style={{ color: '#8c8c8c' }}>
+            <BankOutlined /> 房产: <Typography.Text strong>{record.propertyCount}</Typography.Text>
+          </Space>
+          <Space size={8} style={{ color: '#8c8c8c' }}>
+            <EnvironmentOutlined /> 地图: <Typography.Text strong>{record.mapCount}</Typography.Text>
           </Space>
         </Space>
       )
     },
     {
-      title: '特殊资产规则',
-      key: 'rules',
-      render: (_: any, record: Theme) => (
-        <Row gutter={24} style={{ maxWidth: 500 }}>
-          <Col span={13}>
-            <div style={{ paddingLeft: 8, borderLeft: '3px solid #fa8c16' }}>
-              <div style={{ fontSize: '11px', color: '#bfbfbf', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <RocketOutlined /> 车站租金 (1-4座)
-              </div>
-              <Typography.Text strong style={{ color: '#fa8c16', fontSize: '14px', letterSpacing: '1px' }}>
-                {Array.isArray(record.stationRent) ? record.stationRent.join(' → ') : '-'}
-              </Typography.Text>
-            </div>
-          </Col>
-          <Col span={11}>
-            <div style={{ paddingLeft: 8, borderLeft: '3px solid #13c2c2' }}>
-              <div style={{ fontSize: '11px', color: '#bfbfbf', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <BankOutlined /> 公用倍率 (1-2个)
-              </div>
-              <Typography.Text strong style={{ color: '#13c2c2', fontSize: '14px', letterSpacing: '1px' }}>
-                {Array.isArray(record.utilityMultipliers) ? record.utilityMultipliers.map(v => `x${v}`).join(' / ') : '-'}
-              </Typography.Text>
-            </div>
-          </Col>
-        </Row>
-      )
-    },
-    {
       title: '操作',
       key: 'action',
-      width: 120,
+      width: 160,
       align: 'right' as const,
       render: (_: any, record: ThemeWithStats) => (
         <Space size="middle">
-          <Button type="link" size="small" style={{ padding: 0 }} onClick={() => handleEdit(record)}>编辑</Button>
+          <Button type="link" size="small" onClick={() => handleEdit(record)}>重命名</Button>
           <Popconfirm 
             title="确定要删除这个主题吗？" 
             description={record.propertyCount > 0 ? `该主题下尚有 ${record.propertyCount} 个房产，删除后它们将失去分类。` : undefined}
@@ -153,7 +138,7 @@ const ThemeManager: React.FC = () => {
             okText="确定"
             cancelText="取消"
           >
-            <Button type="link" danger size="small" style={{ padding: 0 }}>删除</Button>
+            <Button type="link" danger size="small">删除主题</Button>
           </Popconfirm>
         </Space>
       )
@@ -166,10 +151,10 @@ const ThemeManager: React.FC = () => {
         <div>
           <Typography.Title level={2} style={{ marginBottom: 12, fontSize: '28px', fontWeight: 700, letterSpacing: '-0.5px' }}>
             <RocketOutlined style={{ marginRight: 16, color: '#722ed1' }} />
-            主题分类管理
+            游戏主题管理
           </Typography.Title>
           <Typography.Paragraph style={{ color: '#8c8c8c', fontSize: '15px', maxWidth: 600, marginBottom: 0 }}>
-            定义游戏的不同章节。每个主题不仅包含视觉风格，还定义了专属的车站、公用事业等特殊资产配置。
+            在此管理游戏的不同章节与主题名称。具体的经济平衡数值（如买地、租金等）已移至【经济等级管理】中统一配置。
           </Typography.Paragraph>
         </div>
         <Button 
@@ -205,119 +190,25 @@ const ThemeManager: React.FC = () => {
         title={
           <Space>
             <BuildOutlined style={{ color: '#722ed1' }} />
-            <span style={{ fontSize: '18px', fontWeight: 600 }}>{editingTheme ? '主题规则配置' : '创建新主题'}</span>
+            <span style={{ fontSize: '18px', fontWeight: 600 }}>{editingTheme ? '重命名主题' : '创建新主题'}</span>
           </Space>
         }
         open={isModalVisible}
         onOk={handleOk}
         onCancel={() => setIsModalVisible(false)}
-        width={720}
+        width={480}
         destroyOnClose
-        okText="保存更改"
+        okText="保存"
         cancelText="取消"
-        forceRender
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item 
             name="name" 
             label={<Typography.Text strong style={{ fontSize: '15px' }}>主题名称</Typography.Text>} 
-            rules={[{ required: true }]}
-            style={{ marginBottom: 32 }}
+            rules={[{ required: true, message: '请输入主题名称' }]}
           >
             <Input placeholder="例如: 经典大富翁 / 繁华北京" size="large" style={{ borderRadius: '8px' }} />
           </Form.Item>
-
-          <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <BankOutlined style={{ color: '#722ed1', fontSize: '16px' }} />
-            <Typography.Text strong style={{ fontSize: '15px' }}>全局收益规则设置</Typography.Text>
-          </div>
-          
-          <Row gutter={[24, 24]}>
-            <Col span={24}>
-              <Card 
-                size="small" 
-                title={
-                  <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                    <Space><RocketOutlined style={{ color: '#fa8c16' }} /><span>车站 (越多越贵逻辑)</span></Space>
-                    <Typography.Text type="secondary" style={{ fontSize: '11px', fontWeight: 'normal' }}>
-                      解释：这是一种“成套”资产。玩家每多拿拿下座车站，该主题下所有车站的租金都会集体涨价。
-                    </Typography.Text>
-                  </div>
-                }
-                style={{ borderRadius: '12px', background: '#fff7e6', border: '1px solid #ffd591' }}
-                bodyStyle={{ padding: '20px 24px' }}
-              >
-                <Form.List name="stationRent">
-                  {(fields) => (
-                    <Row gutter={16}>
-                      {fields.map((field, index) => (
-                        <Col span={6} key={field.key}>
-                          <Form.Item 
-                            {...field} 
-                            label={<span style={{ fontSize: '12px', color: '#8c8c8c' }}>持有 {index + 1} 座车站时</span>}
-                            style={{ marginBottom: 0 }}
-                          >
-                            <InputNumber 
-                              style={{ width: '100%', borderRadius: '6px' }} 
-                              prefix="¥" 
-                              controls={false}
-                              placeholder="金额"
-                            />
-                          </Form.Item>
-                        </Col>
-                      ))}
-                    </Row>
-                  )}
-                </Form.List>
-              </Card>
-            </Col>
-
-            <Col span={24}>
-              <Card 
-                size="small" 
-                title={
-                  <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                    <Space><BankOutlined style={{ color: '#13c2c2' }} /><span>公用事业 (点数乘法逻辑)</span></Space>
-                    <Typography.Text type="secondary" style={{ fontSize: '11px', fontWeight: 'normal' }}>
-                      解释：租金 = 访客踩到时甩出的“骰子点数之和” × 下方的倍率。
-                    </Typography.Text>
-                  </div>
-                }
-                style={{ borderRadius: '12px', background: '#e6fffb', border: '1px solid #87e8de' }}
-                bodyStyle={{ padding: '20px 24px' }}
-              >
-                <Form.List name="utilityMultipliers">
-                  {(fields) => (
-                    <Row gutter={16}>
-                      {fields.map((field, index) => (
-                        <Col span={12} key={field.key}>
-                          <Form.Item 
-                            {...field} 
-                            label={<span style={{ fontSize: '12px', color: '#8c8c8c' }}>持有 {index + 1} 个事业地块时</span>}
-                            style={{ marginBottom: 0 }}
-                          >
-                            <InputNumber 
-                              style={{ width: '100%', borderRadius: '6px' }} 
-                              prefix="点数 ×" 
-                              controls={false}
-                              placeholder="倍率"
-                            />
-                          </Form.Item>
-                        </Col>
-                      ))}
-                    </Row>
-                  )}
-                </Form.List>
-              </Card>
-            </Col>
-          </Row>
-          
-          <div style={{ marginTop: 24, padding: '12px 20px', background: '#f5f5f5', borderRadius: '10px', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-            <span style={{ fontSize: '16px' }}>💡</span>
-            <Typography.Text type="secondary" style={{ fontSize: '12px', lineHeight: '1.6' }}>
-              <strong>规则提示：</strong> 此处定义的数值是全局生效的。例如，如果你在房产库中创建了 4 个关联到此主题的车站，当玩家持有多座时，租金将自动按此处的阶梯价格计算。具体的名称和地块买入价请前往【房产库管理】。
-            </Typography.Text>
-          </div>
         </Form>
       </Modal>
     </div>

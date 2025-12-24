@@ -3,7 +3,7 @@ import AdminLayout from './components/AdminLayout';
 import AdminOverview from './components/AdminOverview';
 import PropertyManager from './components/PropertyManager';
 import ThemeManager from './components/ThemeManager';
-import RentLevelManager from './components/RentLevelManager';
+import EconomicManager from './components/EconomicManager';
 import './App.css';
 
 function App() {
@@ -57,7 +57,7 @@ function App() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminOverview />} />
           <Route path="properties" element={<PropertyManager />} />
-          <Route path="rent-levels" element={<RentLevelManager />} />
+          <Route path="rent-levels" element={<EconomicManager />} />
           <Route path="themes" element={<ThemeManager />} />
           <Route path="maps" element={<div style={{ padding: 40, textAlign: 'center' }}><h3>地图设计模块正在开发中...</h3></div>} />
           <Route path="cards" element={<div style={{ padding: 40, textAlign: 'center' }}><h3>卡片管理模块正在开发中...</h3></div>} />
