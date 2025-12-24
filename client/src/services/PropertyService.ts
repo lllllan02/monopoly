@@ -6,8 +6,6 @@ export interface Property {
   rentLevelId?: string; // 仅普通土地使用
   price?: number;       // 车站和公共事业直接设置价格
   description?: string;
-  createdAt: string;
-  updatedAt?: string;
 }
 
 const API_BASE = `http://${window.location.hostname}:3000/api`;

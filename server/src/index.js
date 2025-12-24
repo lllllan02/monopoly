@@ -24,7 +24,7 @@ const io = new Server(server, {
   }
 });
 
-// --- 租金等级管理 API ---
+// --- 土地经济等级管理 API ---
 app.get('/api/rent-levels', (req, res) => {
   res.json(dbRentLevels.data.levels);
 });
@@ -32,8 +32,7 @@ app.get('/api/rent-levels', (req, res) => {
 app.post('/api/rent-levels', async (req, res) => {
   const newLevel = {
     id: uuidv4(),
-    ...req.body,
-    createdAt: new Date().toISOString()
+    ...req.body
   };
   dbRentLevels.data.levels.push(newLevel);
   await dbRentLevels.write();
@@ -46,8 +45,7 @@ app.put('/api/rent-levels/:id', async (req, res) => {
   if (index !== -1) {
     dbRentLevels.data.levels[index] = { 
       ...dbRentLevels.data.levels[index], 
-      ...req.body,
-      updatedAt: new Date().toISOString() 
+      ...req.body
     };
     await dbRentLevels.write();
     res.json(dbRentLevels.data.levels[index]);
@@ -73,8 +71,7 @@ app.post('/api/themes', async (req, res) => {
     id: uuidv4(),
     name: req.body.name || '新主题',
     stationRent: req.body.stationRent || [25, 50, 100, 200],
-    utilityMultipliers: req.body.utilityMultipliers || [4, 10],
-    createdAt: new Date().toISOString()
+    utilityMultipliers: req.body.utilityMultipliers || [4, 10]
   };
   dbThemes.data.themes.push(newTheme);
   await dbThemes.write();
@@ -87,8 +84,7 @@ app.put('/api/themes/:id', async (req, res) => {
   if (index !== -1) {
     dbThemes.data.themes[index] = { 
       ...dbThemes.data.themes[index], 
-      ...req.body,
-      updatedAt: new Date().toISOString() 
+      ...req.body
     };
     await dbThemes.write();
     res.json(dbThemes.data.themes[index]);
@@ -105,22 +101,25 @@ app.delete('/api/themes/:id', async (req, res) => {
 });
 
 // --- 房产库管理 API ---
-
 app.get('/api/properties', (req, res) => {
   res.json(dbProperties.data.properties);
 });
 
 app.post('/api/properties', async (req, res) => {
+  const { name, themeId, type, rentLevelId, price, description } = req.body;
   const newProperty = {
     id: uuidv4(),
-    name: req.body.name || '未命名房产',
-    themeId: req.body.themeId || '', 
-    type: req.body.type || 'normal', 
-    rentLevelId: req.body.rentLevelId || '',
-    price: Number(req.body.price) || 0,
-    description: req.body.description || '', 
-    createdAt: new Date().toISOString()
+    name: name || '未命名房产',
+    themeId: themeId || '', 
+    type: type || 'normal', 
+    description: description || ''
   };
+
+  if (type === 'normal') {
+    newProperty.rentLevelId = rentLevelId || '';
+  } else {
+    newProperty.price = Number(price) || 0;
+  }
 
   dbProperties.data.properties.push(newProperty);
   await dbProperties.write();
@@ -134,8 +133,7 @@ app.put('/api/properties/:id', async (req, res) => {
 
   dbProperties.data.properties[index] = {
     ...dbProperties.data.properties[index],
-    ...req.body,
-    updatedAt: new Date().toISOString()
+    ...req.body
   };
 
   await dbProperties.write();
@@ -149,8 +147,20 @@ app.delete('/api/properties/:id', async (req, res) => {
   res.status(204).send();
 });
 
-// --- 地图与卡片 API 略 ---
+// --- 地图 API ---
 app.get('/api/maps', (req, res) => res.json(dbMaps.data.maps));
+
+app.post('/api/maps', async (req, res) => {
+  const newMap = {
+    id: uuidv4(),
+    ...req.body
+  };
+  dbMaps.data.maps.push(newMap);
+  await dbMaps.write();
+  res.status(201).json(newMap);
+});
+
+// --- 卡片 API ---
 app.get('/api/cards', (req, res) => res.json(dbCards.data.cards));
 
 const PORT = process.env.PORT || 3000;

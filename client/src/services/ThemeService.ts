@@ -5,7 +5,6 @@ export interface Theme {
   stationRent: number[];
   // 公用事业倍率: [拥有1座时的点数倍率, 拥有2座时的点数倍率]
   utilityMultipliers: number[];
-  createdAt?: string;
 }
 
 const API_BASE = `http://${window.location.hostname}:3000/api`;

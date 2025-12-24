@@ -5,9 +5,8 @@ export interface RentLevel {
   color: string;
   purchasePrice: number;
   houseCost: number;
-  maxHouses: number; // 新增：该等级允许建造的最大房屋数量
-  rentCurve: number[]; // 长度为 maxHouses + 1 [基础, 1级, 2级, ..., N级]
-  createdAt?: string;
+  maxHouses: number;
+  rentCurve: number[];
 }
 
 const API_BASE = `http://${window.location.hostname}:3000/api`;
@@ -42,4 +41,3 @@ export const RentLevelService = {
     });
   },
 };
-
