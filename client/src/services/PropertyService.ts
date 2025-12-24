@@ -1,16 +1,19 @@
 export interface Property {
   id: string;
   name: string;
+  theme: string;       // 新增
+  type: 'normal' | 'station' | 'utility'; // 新增
   colorGroup: string;
   price: number;
   houseCost: number;
   baseRent: number;
   rentMultipliers: number[];
+  description?: string; // 新增
   createdAt: string;
   updatedAt?: string;
 }
 
-const API_BASE = 'http://localhost:3000/api'; // 局域网调试时需修改为实际 IP
+const API_BASE = `http://${window.location.hostname}:3000/api`;
 
 export const PropertyService = {
   async getAll(): Promise<Property[]> {
@@ -42,4 +45,3 @@ export const PropertyService = {
     });
   },
 };
-
