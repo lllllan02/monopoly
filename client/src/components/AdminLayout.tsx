@@ -25,9 +25,9 @@ const AdminLayout: React.FC = () => {
       label: '后台纵览',
     },
     {
-      key: '/admin/properties',
-      icon: <BankOutlined />,
-      label: '房产库管理',
+      key: '/admin/themes',
+      icon: <RocketOutlined />,
+      label: '主题管理',
     },
     {
       key: '/admin/rent-levels',
@@ -35,9 +35,9 @@ const AdminLayout: React.FC = () => {
       label: '经济体系',
     },
     {
-      key: '/admin/themes',
-      icon: <RocketOutlined />,
-      label: '主题管理',
+      key: '/admin/properties',
+      icon: <BankOutlined />,
+      label: '房产库管理',
     },
     {
       key: '/admin/maps',
