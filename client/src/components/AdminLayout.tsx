@@ -7,6 +7,7 @@ import {
   EnvironmentOutlined, 
   IdcardOutlined,
   LogoutOutlined,
+  PercentageOutlined,
   RocketOutlined
 } from '@ant-design/icons';
 
@@ -27,6 +28,11 @@ const AdminLayout: React.FC = () => {
       key: '/admin/properties',
       icon: <BankOutlined />,
       label: '房产库管理',
+    },
+    {
+      key: '/admin/rent-levels',
+      icon: <PercentageOutlined />,
+      label: '经济等级',
     },
     {
       key: '/admin/themes',

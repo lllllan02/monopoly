@@ -43,18 +43,19 @@ const AdminOverview: React.FC = () => {
   }, []);
 
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-      <div style={{ marginBottom: 32 }}>
-        <Title level={2}>
-          <RocketOutlined style={{ marginRight: 12, color: '#722ed1' }} />
-          后台纵览
+    <div className="admin-content-fade-in" style={{ padding: 0, background: '#fff', minHeight: '100%' }}>
+      <div style={{ padding: '32px 40px 24px 40px', background: '#fafafa', borderBottom: '1px solid #f0f0f0', marginBottom: 32 }}>
+        <Title level={2} style={{ marginBottom: 12, fontSize: '28px', fontWeight: 700, letterSpacing: '-0.5px' }}>
+          <RocketOutlined style={{ marginRight: 16, color: '#722ed1' }} />
+          后台管理纵览
         </Title>
-        <Paragraph>
+        <Paragraph style={{ color: '#8c8c8c', fontSize: '15px', maxWidth: 800, marginBottom: 0 }}>
           欢迎来到大富翁管理后台。在这里，你可以定义游戏的核心资产、设计精美的地图并配置各种趣味性十足的命运/机会卡片。
         </Paragraph>
       </div>
 
-      <Row gutter={[24, 24]}>
+      <div style={{ padding: '0 40px' }}>
+        <Row gutter={[24, 24]}>
         <Col xs={24} sm={12} lg={6}>
           <Card bordered={false} hoverable style={{ background: '#f9f0ff' }}>
             <Statistic
@@ -146,7 +147,8 @@ const AdminOverview: React.FC = () => {
         </Col>
       </Row>
     </div>
-  );
+  </div>
+);
 };
 
 export default AdminOverview;

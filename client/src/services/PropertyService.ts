@@ -1,13 +1,13 @@
 export interface Property {
   id: string;
   name: string;
-  theme: string;       // 新增
-  type: 'normal' | 'station' | 'utility'; // 新增
+  themeId: string;       // 修改为 id
+  type: 'normal' | 'station' | 'utility';
+  rentLevelId?: string; // 关联经济等级
   colorGroup: string;
   price: number;
   houseCost: number;
-  baseRent: number;
-  rentMultipliers: number[];
+  rentCurve: number[]; // 修改为数组曲线 [基础, 1房, 2房, 3房, 4房, 旅馆]
   description?: string; // 新增
   createdAt: string;
   updatedAt?: string;

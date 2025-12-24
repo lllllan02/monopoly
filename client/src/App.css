@@ -13,3 +13,9 @@
 .admin-content-fade-in {
   animation: fadeIn 0.3s ease-out;
 }
+
+/* 租金柱形图悬浮效果 */
+.rent-bar-hover:hover {
+  transform: translateY(-3px) scaleX(1.05);
+  filter: brightness(1.1);
+}

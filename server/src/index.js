@@ -10,6 +10,7 @@ const dbProperties = await JSONFilePreset('data/properties.json', { properties: 
 const dbMaps = await JSONFilePreset('data/maps.json', { maps: [] });
 const dbCards = await JSONFilePreset('data/cards.json', { cards: [] });
 const dbThemes = await JSONFilePreset('data/themes.json', { themes: [] });
+const dbRentLevels = await JSONFilePreset('data/rent_levels.json', { levels: [] });
 
 const app = express();
 app.use(cors());
@@ -21,6 +22,45 @@ const io = new Server(server, {
     origin: "*",
     methods: ["GET", "POST"]
   }
+});
+
+// --- 租金等级管理 API ---
+app.get('/api/rent-levels', (req, res) => {
+  res.json(dbRentLevels.data.levels);
+});
+
+app.post('/api/rent-levels', async (req, res) => {
+  const newLevel = {
+    id: uuidv4(),
+    ...req.body,
+    createdAt: new Date().toISOString()
+  };
+  dbRentLevels.data.levels.push(newLevel);
+  await dbRentLevels.write();
+  res.status(201).json(newLevel);
+});
+
+app.put('/api/rent-levels/:id', async (req, res) => {
+  const { id } = req.params;
+  const index = dbRentLevels.data.levels.findIndex(l => l.id === id);
+  if (index !== -1) {
+    dbRentLevels.data.levels[index] = { 
+      ...dbRentLevels.data.levels[index], 
+      ...req.body,
+      updatedAt: new Date().toISOString() 
+    };
+    await dbRentLevels.write();
+    res.json(dbRentLevels.data.levels[index]);
+  } else {
+    res.status(404).send('Not found');
+  }
+});
+
+app.delete('/api/rent-levels/:id', async (req, res) => {
+  const { id } = req.params;
+  dbRentLevels.data.levels = dbRentLevels.data.levels.filter(l => l.id !== id);
+  await dbRentLevels.write();
+  res.status(204).send();
 });
 
 // --- 主题管理 API ---

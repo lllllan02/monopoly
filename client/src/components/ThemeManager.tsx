@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Modal, Form, Input, Space, message, Popconfirm, Tag } from 'antd';
+import { Table, Button, Modal, Form, Input, Space, message, Popconfirm, Tag, Typography } from 'antd';
 import { RocketOutlined, BankOutlined, EnvironmentOutlined } from '@ant-design/icons';
+
+const { Title, Paragraph } = Typography;
 import { type Theme, ThemeService } from '../services/ThemeService';
 import { PropertyService } from '../services/PropertyService';
 import { MapService } from '../services/MapService';
@@ -23,11 +25,11 @@ const ThemeManager: React.FC = () => {
         MapService.getAll()
       ]);
 
-      const themesWithStats = themesData.map(theme => ({
-        ...theme,
-        propertyCount: propsData.filter((p: any) => p.theme === theme.name).length,
-        mapCount: mapsData.filter((m: any) => m.theme === theme.name).length
-      }));
+             const themesWithStats = themesData.map(theme => ({
+               ...theme,
+               propertyCount: propsData.filter((p: any) => p.themeId === theme.id).length,
+               mapCount: mapsData.filter((m: any) => m.themeId === theme.id).length
+             }));
 
       setThemes(themesWithStats);
     } catch (error) {
@@ -112,24 +114,45 @@ const ThemeManager: React.FC = () => {
   ];
 
   return (
-    <div className="admin-content-fade-in">
-      <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div className="admin-content-fade-in" style={{ padding: 0, background: '#fff', minHeight: '100%' }}>
+      <div style={{ padding: '32px 40px 24px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: '#fafafa', borderBottom: '1px solid #f0f0f0', marginBottom: 24 }}>
         <div>
-          <h2 style={{ margin: 0 }}>主题管理</h2>
-          <p style={{ color: '#8c8c8c', marginTop: 4 }}>定义分类标签，并查看每个分类下的内容规模。</p>
+          <Typography.Title level={2} style={{ marginBottom: 12, fontSize: '28px', fontWeight: 700, letterSpacing: '-0.5px' }}>
+            <RocketOutlined style={{ marginRight: 16, color: '#722ed1' }} />
+            主题分类管理
+          </Typography.Title>
+          <Typography.Paragraph style={{ color: '#8c8c8c', fontSize: '15px', maxWidth: 600, marginBottom: 0 }}>
+            定义游戏的不同章节或视觉主题。通过主题，你可以将房产、经济等级和地图进行逻辑分组。
+          </Typography.Paragraph>
         </div>
-        <Button type="primary" size="large" icon={<RocketOutlined />} onClick={handleAdd}>
+        <Button 
+          type="primary" 
+          size="large" 
+          icon={<RocketOutlined />} 
+          onClick={handleAdd}
+          style={{ 
+            borderRadius: '8px', 
+            height: '50px', 
+            padding: '0 32px', 
+            fontSize: '16px',
+            fontWeight: 600,
+            boxShadow: '0 4px 12px rgba(114, 46, 209, 0.25)'
+          }}
+        >
           创建新主题
         </Button>
       </div>
       
-      <Table 
-        columns={columns} 
-        dataSource={themes} 
-        rowKey="id" 
-        bordered 
-        pagination={false} 
-      />
+      <div style={{ padding: '0 40px' }}>
+        <Table 
+          columns={columns} 
+          dataSource={themes} 
+          rowKey="id" 
+          bordered={false} 
+          pagination={false} 
+          size="middle"
+        />
+      </div>
 
       <Modal
         title="创建新主题"

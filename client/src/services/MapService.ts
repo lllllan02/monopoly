@@ -1,7 +1,7 @@
 export interface Map {
   id: string;
   name: string;
-  theme: string;
+  themeId: string; // 使用主题 ID
   size: number;
   slots: any[];
   createdAt: string;
