@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Row, Col, Statistic, Typography, Space, List, Tag } from 'antd';
+import { Card, Row, Col, Statistic, Typography, Space, List, Tag, message } from 'antd';
 import { 
   BankOutlined, 
   EnvironmentOutlined, 
@@ -8,6 +8,7 @@ import {
   RocketOutlined 
 } from '@ant-design/icons';
 import { PropertyService } from '../services/PropertyService';
+import { MapService } from '../services/MapService';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -20,15 +21,25 @@ const AdminOverview: React.FC = () => {
   });
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchAllStats = async () => {
       try {
-        const props = await PropertyService.getAll();
-        setStats(s => ({ ...s, properties: props.length }));
+        const [props, maps, cardsRes] = await Promise.all([
+          PropertyService.getAll(),
+          MapService.getAll(),
+          fetch(`http://${window.location.hostname}:3000/api/cards`).then(res => res.json())
+        ]);
+        
+        setStats({
+          properties: props.length,
+          maps: maps.length,
+          cards: cardsRes.length,
+          online: 0 // 未来通过 Socket 获取
+        });
       } catch (e) {
-        console.error('Failed to fetch stats');
+        message.error('获取统计数据失败');
       }
     };
-    fetchData();
+    fetchAllStats();
   }, []);
 
   return (

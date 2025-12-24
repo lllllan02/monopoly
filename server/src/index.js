@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from 'uuid';
 const dbProperties = await JSONFilePreset('data/properties.json', { properties: [] });
 const dbMaps = await JSONFilePreset('data/maps.json', { maps: [] });
 const dbCards = await JSONFilePreset('data/cards.json', { cards: [] });
+const dbThemes = await JSONFilePreset('data/themes.json', { themes: [] });
 
 const app = express();
 app.use(cors());
@@ -20,6 +21,29 @@ const io = new Server(server, {
     origin: "*",
     methods: ["GET", "POST"]
   }
+});
+
+// --- 主题管理 API ---
+app.get('/api/themes', (req, res) => {
+  res.json(dbThemes.data.themes);
+});
+
+app.post('/api/themes', async (req, res) => {
+  const newTheme = {
+    id: uuidv4(),
+    name: req.body.name || '新主题',
+    createdAt: new Date().toISOString()
+  };
+  dbThemes.data.themes.push(newTheme);
+  await dbThemes.write();
+  res.status(201).json(newTheme);
+});
+
+app.delete('/api/themes/:id', async (req, res) => {
+  const { id } = req.params;
+  dbThemes.data.themes = dbThemes.data.themes.filter(t => t.id !== id);
+  await dbThemes.write();
+  res.status(204).send();
 });
 
 // --- 房产库管理 API ---

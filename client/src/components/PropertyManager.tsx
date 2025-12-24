@@ -10,6 +10,7 @@ import {
   InfoCircleOutlined 
 } from '@ant-design/icons';
 import { type Property, PropertyService } from '../services/PropertyService';
+import { type Theme, ThemeService } from '../services/ThemeService';
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -17,26 +18,31 @@ const { Text } = Typography;
 
 const PropertyManager: React.FC = () => {
   const [properties, setProperties] = useState<Property[]>([]);
+  const [themes, setThemes] = useState<Theme[]>([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
   const [themeFilter, setThemeFilter] = useState<string>('all');
   const [form] = Form.useForm();
 
-  const fetchProperties = async () => {
+  const fetchData = async () => {
     try {
-      const data = await PropertyService.getAll();
-      setProperties(data);
+      const [propsData, themesData] = await Promise.all([
+        PropertyService.getAll(),
+        ThemeService.getAll()
+      ]);
+      setProperties(propsData);
+      setThemes(themesData);
     } catch (error) {
-      message.error('获取房产列表失败');
+      message.error('获取数据失败');
     }
   };
 
   useEffect(() => {
-    fetchProperties();
+    fetchData();
   }, []);
 
   // 获取所有唯一主题用于筛选
-  const themes = useMemo(() => {
+  const availableThemes = useMemo(() => {
     const set = new Set(properties.map(p => p.theme));
     return Array.from(set);
   }, [properties]);
@@ -50,7 +56,11 @@ const PropertyManager: React.FC = () => {
   const handleAdd = () => {
     setEditingProperty(null);
     form.resetFields();
-    form.setFieldsValue({ theme: '经典', type: 'normal', rentMultipliers: [1, 5, 15, 45, 80, 125] });
+    form.setFieldsValue({ 
+      theme: themes[0]?.name || '经典', 
+      type: 'normal', 
+      rentMultipliers: [1, 5, 15, 45, 80, 125] 
+    });
     setIsModalVisible(true);
   };
 
@@ -74,7 +84,7 @@ const PropertyManager: React.FC = () => {
     try {
       await PropertyService.delete(id);
       message.success('删除成功');
-      fetchProperties();
+      fetchData();
     } catch (error) {
       message.error('删除失败');
     }
@@ -91,7 +101,7 @@ const PropertyManager: React.FC = () => {
         message.success('添加成功');
       }
       setIsModalVisible(false);
-      fetchProperties();
+      fetchData();
     } catch (error) {
       message.error('操作失败');
     }
@@ -117,7 +127,7 @@ const PropertyManager: React.FC = () => {
       title: '主题', 
       dataIndex: 'theme', 
       key: 'theme',
-      render: (theme: string) => <Tag color="blue">{theme}</Tag>
+      render: (themeName: string) => <Tag color="blue">{themeName}</Tag>
     },
     { 
       title: '类型', 
@@ -172,7 +182,7 @@ const PropertyManager: React.FC = () => {
             suffixIcon={<FilterOutlined />}
           >
             <Option value="all">所有主题</Option>
-            {themes.map(t => <Option key={t} value={t}>{t}</Option>)}
+            {availableThemes.map(t => <Option key={t} value={t}>{t}</Option>)}
           </Select>
           <Button type="primary" size="large" icon={<BankOutlined />} onClick={handleAdd}>
             添加新房产
@@ -205,7 +215,11 @@ const PropertyManager: React.FC = () => {
             </Col>
             <Col span={12}>
               <Form.Item name="theme" label="所属主题" rules={[{ required: true }]}>
-                <Input placeholder="例如: 经典, 赛博朋克" />
+                <Select placeholder="选择主题">
+                  {themes.map(t => (
+                    <Option key={t.id} value={t.name}>{t.name}</Option>
+                  ))}
+                </Select>
               </Form.Item>
             </Col>
           </Row>

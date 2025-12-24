@@ -6,7 +6,8 @@ import {
   BankOutlined, 
   EnvironmentOutlined, 
   IdcardOutlined,
-  LogoutOutlined
+  LogoutOutlined,
+  RocketOutlined
 } from '@ant-design/icons';
 
 const { Header, Content, Sider } = Layout;
@@ -26,6 +27,11 @@ const AdminLayout: React.FC = () => {
       key: '/admin/properties',
       icon: <BankOutlined />,
       label: '房产库管理',
+    },
+    {
+      key: '/admin/themes',
+      icon: <RocketOutlined />,
+      label: '主题管理',
     },
     {
       key: '/admin/maps',
