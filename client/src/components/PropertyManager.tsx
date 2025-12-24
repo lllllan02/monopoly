@@ -1,13 +1,14 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { 
   Table, Button, Modal, Form, Input, InputNumber, 
-  Space, message, Tag, Select, Divider, Tooltip, Row, Col, Typography 
+  Space, message, Tag, Select, Divider, Tooltip, Row, Col, Typography, Alert, Badge
 } from 'antd';
 import { 
   BankOutlined, 
   CopyOutlined, 
   FilterOutlined,
-  InfoCircleOutlined 
+  InfoCircleOutlined,
+  QuestionCircleOutlined
 } from '@ant-design/icons';
 import { type Property, PropertyService } from '../services/PropertyService';
 import { type Theme, ThemeService } from '../services/ThemeService';
@@ -175,6 +176,18 @@ const PropertyManager: React.FC = () => {
           <p style={{ color: '#8c8c8c', marginTop: 4 }}>定义全局房产的元数据，支持主题分组与类型扩展。</p>
         </div>
         <Space>
+          <Tooltip title={
+            <div style={{ padding: '4px' }}>
+              <div style={{ marginBottom: '8px' }}><strong>类型说明：</strong></div>
+              <ul style={{ paddingLeft: '16px', margin: 0 }}>
+                <li><strong>普通土地：</strong> 可建造房屋/旅馆，租金随建筑等级提升。</li>
+                <li><strong>车站：</strong> 租金取决于玩家拥有的车站总数。</li>
+                <li><strong>公共事业：</strong> 租金基于玩家掷出的骰子点数乘以特定倍率。</li>
+              </ul>
+            </div>
+          } overlayInnerStyle={{ width: '300px' }}>
+            <Button icon={<QuestionCircleOutlined />}>类型说明</Button>
+          </Tooltip>
           <Select 
             value={themeFilter} 
             onChange={setThemeFilter} 
@@ -190,6 +203,31 @@ const PropertyManager: React.FC = () => {
         </Space>
       </div>
       
+      <div style={{ marginBottom: '16px' }}>
+        <Alert
+          message="房产类型逻辑说明"
+          description={
+            <Row gutter={16}>
+              <Col span={8}>
+                <Badge status="success" text="普通土地" style={{ fontWeight: 'bold' }} />
+                <div style={{ fontSize: '12px', color: '#666', marginTop: 4 }}>可购买并建造房屋/旅馆，租金随着建筑等级（0-5级）大幅提升。</div>
+              </Col>
+              <Col span={8}>
+                <Badge status="warning" text="车站" style={{ fontWeight: 'bold' }} />
+                <div style={{ fontSize: '12px', color: '#666', marginTop: 4 }}>不可盖楼。租金根据玩家当前拥有的车站总数（1-4座）成倍增长。</div>
+              </Col>
+              <Col span={8}>
+                <Badge status="processing" text="公共事业" style={{ fontWeight: 'bold' }} />
+                <div style={{ fontSize: '12px', color: '#666', marginTop: 4 }}>电力/自来水厂。租金为 [当前掷出的骰子点数] × [特定倍率]。</div>
+              </Col>
+            </Row>
+          }
+          type="info"
+          showIcon
+          closable
+        />
+      </div>
+
       <Table 
         columns={columns} 
         dataSource={filteredProperties} 
