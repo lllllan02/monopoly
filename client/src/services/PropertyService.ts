@@ -1,9 +1,10 @@
 export interface Property {
   id: string;
   name: string;
-  themeId: string;       // 修改为 id
+  themeId: string;
   type: 'normal' | 'station' | 'utility';
-  rentLevelId?: string; // 关联经济等级 (引用经济模板后，price, houseCost, rentCurve 均从此引用)
+  rentLevelId?: string; // 仅普通土地使用
+  price?: number;       // 车站和公共事业直接设置价格
   description?: string;
   createdAt: string;
   updatedAt?: string;

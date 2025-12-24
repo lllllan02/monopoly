@@ -52,7 +52,7 @@ const PropertyManager: React.FC = () => {
 
   // 根据当前表单选择的主题过滤经济等级
   const currentThemeId = Form.useWatch('themeId', form);
-  const currentLevelId = Form.useWatch('rentLevelId', form);
+  const currentType = Form.useWatch('type', form);
   const filteredRentLevels = useMemo(() => {
     return rentLevels.filter(l => l.themeId === currentThemeId);
   }, [rentLevels, currentThemeId]);
@@ -72,8 +72,7 @@ const PropertyManager: React.FC = () => {
     setEditingProperty(null);
     form.resetFields();
     form.setFieldsValue({ 
-      themeId: themes[0]?.id || '', 
-      type: 'normal'
+      themeId: themes[0]?.id || ''
     });
     setIsModalVisible(true);
   };
@@ -147,32 +146,35 @@ const PropertyManager: React.FC = () => {
       }
     },
     { 
-      title: '类型', 
-      dataIndex: 'type', 
-      key: 'type',
-      render: (type: string) => {
-        const config: any = {
-          normal: { color: 'green', text: '普通土地' },
-          station: { color: 'volcano', text: '车站' },
-          utility: { color: 'cyan', text: '公共事业' }
-        };
-        return <Tag color={config[type]?.color}>{config[type]?.text}</Tag>;
+      title: '经济等级/价格', 
+      key: 'priceInfo',
+      render: (_: any, record: Property) => {
+        if (record.type === 'normal') {
+          const level = rentLevels.find(l => l.id === record.rentLevelId);
+          if (!level) return <Tag color="warning">未关联等级</Tag>;
+          return (
+            <Space>
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: level.color }} />
+              <Text strong>{level.name}</Text>
+              <Text type="secondary" style={{ fontSize: '12px' }}>(¥{level.purchasePrice.toLocaleString()})</Text>
+            </Space>
+          );
+        }
+        return <Text strong>¥{record.price?.toLocaleString()}</Text>;
       }
     },
     { 
-      title: '经济等级', 
-      dataIndex: 'rentLevelId', 
-      key: 'rentLevelId',
-      render: (levelId: string, record: Property) => {
-        if (record.type !== 'normal') return <Text type="secondary">-</Text>;
-        const level = rentLevels.find(l => l.id === levelId);
-        if (!level) return <Tag color="warning">未关联等级</Tag>;
-        return (
-          <Space>
-            <div style={{ width: 12, height: 12, borderRadius: '50%', background: level.color }} />
-            <Text strong>{level.name}</Text>
-          </Space>
-        );
+      title: '类型', 
+      dataIndex: 'type', 
+      key: 'type',
+      width: 120,
+      render: (type: string) => {
+        const config: any = {
+          normal: { color: 'green', text: '普通土地' },
+          station: { color: 'volcano', text: '交通枢纽' },
+          utility: { color: 'cyan', text: '公用事业' }
+        };
+        return <Tag color={config[type]?.color}>{config[type]?.text}</Tag>;
       }
     },
     {
@@ -198,22 +200,10 @@ const PropertyManager: React.FC = () => {
             房产库管理
           </Typography.Title>
           <Typography.Paragraph style={{ color: '#8c8c8c', fontSize: '15px', maxWidth: 600, marginBottom: 0 }}>
-            定义全局房产的元数据。通过将房产与经济等级模板关联，你可以快速构建具有平衡数值的游戏内容。
+            定义全局**普通房产**的元数据。通过将房产与经济等级模板关联，你可以快速构建平衡的资产库。车站、公用事业等地块请在“主题管理”中配置。
           </Typography.Paragraph>
         </div>
         <Space size={12}>
-          <Tooltip title={
-            <div style={{ padding: '4px' }}>
-              <div style={{ marginBottom: '8px' }}><strong>类型说明：</strong></div>
-              <ul style={{ paddingLeft: '16px', margin: 0 }}>
-                <li><strong>普通土地：</strong> 可连续升级建筑，租金随建筑等级提升。</li>
-                <li><strong>车站：</strong> 租金取决于玩家拥有的车站总数。</li>
-                <li><strong>公共事业：</strong> 租金基于玩家掷出的骰子点数乘以特定倍率。</li>
-              </ul>
-            </div>
-          } overlayInnerStyle={{ width: '300px' }}>
-            <Button icon={<QuestionCircleOutlined />} style={{ height: 50, borderRadius: 8 }}>类型说明</Button>
-          </Tooltip>
           <Select 
             value={themeFilter} 
             onChange={setThemeFilter} 
@@ -244,31 +234,6 @@ const PropertyManager: React.FC = () => {
       </div>
       
       <div style={{ padding: '0 40px' }}>
-        <div style={{ marginBottom: '24px' }}>
-          <Alert
-            message="房产类型逻辑说明"
-          description={
-            <Row gutter={16}>
-              <Col span={8}>
-                <Badge status="success" text="普通土地" style={{ fontWeight: 'bold' }} />
-                <div style={{ fontSize: '12px', color: '#666', marginTop: 4 }}>可购买并连续升级建筑，租金随着建筑等级大幅提升。</div>
-              </Col>
-              <Col span={8}>
-                <Badge status="warning" text="车站" style={{ fontWeight: 'bold' }} />
-                <div style={{ fontSize: '12px', color: '#666', marginTop: 4 }}>不可盖楼。租金根据玩家当前拥有的车站总数（1-4座）成倍增长。</div>
-              </Col>
-              <Col span={8}>
-                <Badge status="processing" text="公共事业" style={{ fontWeight: 'bold' }} />
-                <div style={{ fontSize: '12px', color: '#666', marginTop: 4 }}>电力/自来水厂。租金为 [当前掷出的骰子点数] × [特定倍率]。</div>
-              </Col>
-            </Row>
-          }
-          type="info"
-          showIcon
-          closable
-        />
-      </div>
-
       <Table 
         columns={columns} 
         dataSource={filteredProperties} 
@@ -303,38 +268,59 @@ const PropertyManager: React.FC = () => {
               </Form.Item>
             </Col>
             <Col span={8}>
-              <Form.Item 
-                name="rentLevelId" 
-                label="经济等级模板" 
-                rules={[{ required: true, message: '普通土地必须关联等级' }]}
-              >
-                <Select 
-                  placeholder={currentThemeId ? "选择该主题下的等级" : "请先选择主题"} 
-                  disabled={!currentThemeId}
-                >
-                  {filteredRentLevels.map(l => (
-                    <Option key={l.id} value={l.id}>{l.name}</Option>
-                  ))}
+              <Form.Item name="type" label="房产类型" rules={[{ required: true }]}>
+                <Select>
+                  <Option value="normal">普通土地</Option>
+                  <Option value="station">交通枢纽 (车站)</Option>
+                  <Option value="utility">公用事业 (电/水)</Option>
                 </Select>
               </Form.Item>
             </Col>
           </Row>
 
           <Row gutter={16}>
+            {currentType === 'normal' ? (
+              <Col span={24}>
+                <Form.Item 
+                  name="rentLevelId" 
+                  label="经济等级模板" 
+                  rules={[{ required: true, message: '普通土地必须关联等级' }]}
+                >
+                  <Select 
+                    placeholder={currentThemeId ? "选择该主题下的等级" : "请先选择主题"} 
+                    disabled={!currentThemeId}
+                  >
+                    {filteredRentLevels.map(l => (
+                      <Option key={l.id} value={l.id}>{l.name}</Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
+            ) : (
+              <Col span={24}>
+                <Form.Item 
+                  name="price" 
+                  label="地块买入价格" 
+                  rules={[{ required: true, message: '请输入价格' }]}
+                >
+                  <InputNumber 
+                    style={{ width: '100%' }} 
+                    prefix="¥" 
+                    placeholder="例如: 200" 
+                    formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                  />
+                </Form.Item>
+              </Col>
+            )}
+          </Row>
+
+          <Row gutter={16}>
             <Col span={24}>
-              <Form.Item name="type" label="房产类型" rules={[{ required: true }]}>
-                <Select>
-                  <Option value="normal">普通土地</Option>
-                  <Option value="station">车站</Option>
-                  <Option value="utility">公共事业</Option>
-                </Select>
+              <Form.Item name="description" label="房产背景/描述">
+                <TextArea rows={3} placeholder="输入一段有趣的背景故事..." />
               </Form.Item>
             </Col>
           </Row>
-
-          <Form.Item name="description" label="房产背景/描述">
-            <TextArea rows={3} placeholder="输入一段有趣的背景故事..." />
-          </Form.Item>
         </Form>
       </Modal>
     </div>
