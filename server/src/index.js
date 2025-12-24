@@ -67,18 +67,17 @@ app.get('/api/themes', (req, res) => {
 });
 
 app.post('/api/themes', async (req, res) => {
-  const themeId = uuidv4();
   const newTheme = {
     id: themeId,
     name: req.body.name || '新主题',
-    stationRent: req.body.stationRent || [25, 50, 100, 200],
-    utilityMultipliers: req.body.utilityMultipliers || [4, 10],
     goReward: req.body.goReward || 200,
     jailRules: req.body.jailRules || {
       bailAmount: 50,
       maxTurns: 3,
       allowDoubles: true
-    }
+    },
+    stationRent: req.body.stationRent || [25, 50, 100, 200],
+    utilityMultipliers: req.body.utilityMultipliers || [4, 10]
   };
 
   // 自动为新主题创建一个起点地块

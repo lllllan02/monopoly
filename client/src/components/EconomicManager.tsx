@@ -326,31 +326,7 @@ const EconomicManager: React.FC = () => {
                   
                   <Form form={themeForm} layout="vertical">
                     <Row gutter={24}>
-                    <Col span={6}>
-                      <Card size="small" title={<Space><RocketOutlined style={{ color: '#fa8c16' }} /><span>车站租金梯队</span></Space>} style={{ background: '#fff7e6', border: '1px solid #ffd591', borderRadius: '12px', height: '100%' }}>
-                        <Form.List name="stationRent">
-                          {(fields) => (
-                            <Row gutter={8}>
-                              {fields.map((field, index) => (
-                                <Col span={12} key={field.key}>
-                                  <Form.Item 
-                                    {...field} 
-                                    label={<span style={{ fontSize: '11px', color: '#8c8c8c' }}>{index + 1}座时</span>}
-                                    style={{ marginBottom: 4 }}
-                                  >
-                                    <InputNumber 
-                                      style={{ width: '100%', borderRadius: '6px' }} 
-                                      prefix="¥" 
-                                      controls={false}
-                                    />
-                                  </Form.Item>
-                                </Col>
-                              ))}
-                            </Row>
-                          )}
-                        </Form.List>
-                      </Card>
-                    </Col>
+                      {/* 1. 起点规则 */}
                       <Col span={6}>
                         <Card size="small" title={<Space><RocketOutlined style={{ color: '#fa8c16' }} /><span>起点奖励金额</span></Space>} style={{ background: '#f6ffed', border: '1px solid #b7eb8f', borderRadius: '12px', height: '100%' }}>
                           <Form.Item name="goReward" label={<span style={{ fontSize: '11px', color: '#8c8c8c' }}>路过奖励</span>} style={{ marginBottom: 0 }}>
@@ -367,6 +343,61 @@ const EconomicManager: React.FC = () => {
                           </div>
                         </Card>
                       </Col>
+
+                      {/* 2. 监狱规则 */}
+                      <Col span={6}>
+                        <Card size="small" title={<Space><SecurityScanOutlined style={{ color: '#ff4d4f' }} /><span>监狱/拘留规则</span></Space>} style={{ background: '#fff1f0', border: '1px solid #ffa39e', borderRadius: '12px', height: '100%' }}>
+                          <Space direction="vertical" style={{ width: '100%' }} size={4}>
+                            <Row gutter={8}>
+                              <Col span={12}>
+                                <Form.Item name={['jailRules', 'bailAmount']} label={<span style={{ fontSize: '11px', color: '#8c8c8c' }}>保释金</span>} style={{ marginBottom: 0 }}>
+                                  <InputNumber style={{ width: '100%', borderRadius: '6px' }} prefix="¥" controls={false} />
+                                </Form.Item>
+                              </Col>
+                              <Col span={12}>
+                                <Form.Item name={['jailRules', 'maxTurns']} label={<span style={{ fontSize: '11px', color: '#8c8c8c' }}>最大回合</span>} style={{ marginBottom: 0 }}>
+                                  <InputNumber style={{ width: '100%', borderRadius: '6px' }} suffix="轮" controls={false} />
+                                </Form.Item>
+                              </Col>
+                            </Row>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                              <span style={{ fontSize: '11px', color: '#8c8c8c' }}>允许双数出狱</span>
+                              <Form.Item name={['jailRules', 'allowDoubles']} valuePropName="checked" style={{ marginBottom: 0 }}>
+                                <Switch size="small" />
+                              </Form.Item>
+                            </div>
+                          </Space>
+                        </Card>
+                      </Col>
+
+                      {/* 3. 车站规则 */}
+                      <Col span={6}>
+                        <Card size="small" title={<Space><RocketOutlined style={{ color: '#fa8c16' }} /><span>车站租金梯队</span></Space>} style={{ background: '#fff7e6', border: '1px solid #ffd591', borderRadius: '12px', height: '100%' }}>
+                          <Form.List name="stationRent">
+                            {(fields) => (
+                              <Row gutter={8}>
+                                {fields.map((field, index) => (
+                                  <Col span={12} key={field.key}>
+                                    <Form.Item 
+                                      {...field} 
+                                      label={<span style={{ fontSize: '11px', color: '#8c8c8c' }}>{index + 1}座时</span>}
+                                      style={{ marginBottom: 4 }}
+                                    >
+                                      <InputNumber 
+                                        style={{ width: '100%', borderRadius: '6px' }} 
+                                        prefix="¥" 
+                                        controls={false}
+                                      />
+                                    </Form.Item>
+                                  </Col>
+                                ))}
+                              </Row>
+                            )}
+                          </Form.List>
+                        </Card>
+                      </Col>
+
+                      {/* 4. 公用事业规则 */}
                       <Col span={6}>
                         <Card size="small" title={<Space><BankOutlined style={{ color: '#13c2c2' }} /><span>公用事业倍率</span></Space>} style={{ background: '#e6fffb', border: '1px solid #87e8de', borderRadius: '12px', height: '100%' }}>
                           <Form.List name="utilityMultipliers">
@@ -390,30 +421,6 @@ const EconomicManager: React.FC = () => {
                               </Row>
                             )}
                           </Form.List>
-                        </Card>
-                      </Col>
-                      <Col span={6}>
-                        <Card size="small" title={<Space><SecurityScanOutlined style={{ color: '#ff4d4f' }} /><span>监狱规则</span></Space>} style={{ background: '#fff1f0', border: '1px solid #ffa39e', borderRadius: '12px', height: '100%' }}>
-                          <Space direction="vertical" style={{ width: '100%' }} size={4}>
-                            <Row gutter={8}>
-                              <Col span={12}>
-                                <Form.Item name={['jailRules', 'bailAmount']} label={<span style={{ fontSize: '11px', color: '#8c8c8c' }}>保释金</span>} style={{ marginBottom: 0 }}>
-                                  <InputNumber style={{ width: '100%', borderRadius: '6px' }} prefix="¥" controls={false} />
-                                </Form.Item>
-                              </Col>
-                              <Col span={12}>
-                                <Form.Item name={['jailRules', 'maxTurns']} label={<span style={{ fontSize: '11px', color: '#8c8c8c' }}>最大回合</span>} style={{ marginBottom: 0 }}>
-                                  <InputNumber style={{ width: '100%', borderRadius: '6px' }} suffix="轮" controls={false} />
-                                </Form.Item>
-                              </Col>
-                            </Row>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-                              <span style={{ fontSize: '11px', color: '#8c8c8c' }}>允许双数出狱</span>
-                              <Form.Item name={['jailRules', 'allowDoubles']} valuePropName="checked" style={{ marginBottom: 0 }}>
-                                <Switch size="small" />
-                              </Form.Item>
-                            </div>
-                          </Space>
                         </Card>
                       </Col>
                     </Row>
