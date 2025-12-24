@@ -71,7 +71,12 @@ app.post('/api/themes', async (req, res) => {
     id: uuidv4(),
     name: req.body.name || '新主题',
     stationRent: req.body.stationRent || [25, 50, 100, 200],
-    utilityMultipliers: req.body.utilityMultipliers || [4, 10]
+    utilityMultipliers: req.body.utilityMultipliers || [4, 10],
+    jailRules: req.body.jailRules || {
+      bailAmount: 50,
+      maxTurns: 3,
+      allowDoubles: true
+    }
   };
   dbThemes.data.themes.push(newTheme);
   await dbThemes.write();

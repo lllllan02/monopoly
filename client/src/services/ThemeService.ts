@@ -5,6 +5,12 @@ export interface Theme {
   stationRent: number[];
   // 公用事业倍率: [拥有1座时的点数倍率, 拥有2座时的点数倍率]
   utilityMultipliers: number[];
+  // 监狱规则配置
+  jailRules?: {
+    bailAmount: number;      // 保释金金额
+    maxTurns: number;        // 最大禁足回合数
+    allowDoubles: boolean;   // 是否允许通过投出双数出狱
+  };
 }
 
 const API_BASE = `http://${window.location.hostname}:3000/api`;

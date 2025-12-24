@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { 
   Table, Button, Modal, Form, Input, InputNumber, 
   Space, message, Popconfirm, Divider, Select, Tag, 
-  Row, Col, Typography, Tabs, Card, Tooltip
+  Row, Col, Typography, Tabs, Card, Tooltip, Switch
 } from 'antd';
 import { 
   PercentageOutlined, 
@@ -13,7 +13,8 @@ import {
   RocketOutlined,
   BankOutlined,
   SaveOutlined,
-  InfoCircleOutlined
+  InfoCircleOutlined,
+  SecurityScanOutlined
 } from '@ant-design/icons';
 import { type RentLevel, RentLevelService } from '../services/RentLevelService';
 import { type Theme, ThemeService } from '../services/ThemeService';
@@ -57,7 +58,12 @@ const EconomicManager: React.FC = () => {
     if (currentTheme) {
       themeForm.setFieldsValue({
         stationRent: currentTheme.stationRent || [25, 50, 100, 200],
-        utilityMultipliers: currentTheme.utilityMultipliers || [4, 10]
+        utilityMultipliers: currentTheme.utilityMultipliers || [4, 10],
+        jailRules: currentTheme.jailRules || {
+          bailAmount: 50,
+          maxTurns: 3,
+          allowDoubles: true
+        }
       });
     }
   }, [activeThemeId, themes, themeForm]);
@@ -110,7 +116,7 @@ const EconomicManager: React.FC = () => {
           ...currentTheme,
           ...values
         });
-        message.success('特殊资产规则已保存');
+        message.success('规则已保存');
         fetchData();
       }
     } catch (error) {
@@ -275,7 +281,7 @@ const EconomicManager: React.FC = () => {
             经济体系管理
           </Title>
           <Paragraph style={{ color: '#8c8c8c', fontSize: '15px', maxWidth: 800, marginBottom: 0 }}>
-            在此统一定义游戏的经济平衡规则。包含土地分级模板以及车站、公用事业等特殊资产的收益系数。
+            在此统一定义游戏的经济平衡规则。包含土地分级模板以及车站、公用事业、监狱等特殊资产的收益与惩罚系数。
           </Paragraph>
         </div>
         <Button 
@@ -313,13 +319,13 @@ const EconomicManager: React.FC = () => {
             ),
             children: (
               <div style={{ padding: '24px 0 40px 0' }}>
-                {/* 特殊资产规则区域 */}
+                {/* 顶部规则区域 */}
                 <div style={{ marginBottom: 32 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                     <Space size={8}>
                       <div style={{ width: 4, height: 18, background: '#fa8c16', borderRadius: 2 }} />
-                      <Text strong style={{ fontSize: '16px' }}>特殊资产收益系数</Text>
-                      <Tooltip title="车站和公用事业的收益规则随主题全局设定，房产库中关联此主题的地块将自动适用。">
+                      <Text strong style={{ fontSize: '16px' }}>特殊地块规则设定</Text>
+                      <Tooltip title="此处配置车站租金、公用事业倍率以及监狱处罚规则。这些规则随主题全局生效。">
                         <InfoCircleOutlined style={{ color: '#bfbfbf' }} />
                       </Tooltip>
                     </Space>
@@ -330,22 +336,22 @@ const EconomicManager: React.FC = () => {
                       icon={<SaveOutlined />} 
                       onClick={handleSaveThemeRules}
                     >
-                      保存规则修改
+                      保存所有规则修改
                     </Button>
                   </div>
                   
                   <Form form={themeForm} layout="vertical">
                     <Row gutter={24}>
-                      <Col span={14}>
-                        <Card size="small" style={{ background: '#fff7e6', border: '1px solid #ffd591', borderRadius: '12px' }}>
+                      <Col span={12}>
+                        <Card size="small" title={<Space><RocketOutlined style={{ color: '#fa8c16' }} /><span>车站租金梯队</span></Space>} style={{ background: '#fff7e6', border: '1px solid #ffd591', borderRadius: '12px' }}>
                           <Form.List name="stationRent">
                             {(fields) => (
-                              <Row gutter={12}>
+                              <Row gutter={8}>
                                 {fields.map((field, index) => (
                                   <Col span={6} key={field.key}>
                                     <Form.Item 
                                       {...field} 
-                                      label={<span style={{ fontSize: '12px', color: '#8c8c8c' }}>持有 {index + 1} 座时</span>}
+                                      label={<span style={{ fontSize: '11px', color: '#8c8c8c' }}>{index + 1}座时</span>}
                                       style={{ marginBottom: 0 }}
                                     >
                                       <InputNumber 
@@ -359,26 +365,23 @@ const EconomicManager: React.FC = () => {
                               </Row>
                             )}
                           </Form.List>
-                          <div style={{ marginTop: 8, fontSize: '11px', color: '#fa8c16', display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <RocketOutlined /> 车站租金规则：玩家持有的车站越多，访客路过支付的租金越高。
-                          </div>
                         </Card>
                       </Col>
-                      <Col span={10}>
-                        <Card size="small" style={{ background: '#e6fffb', border: '1px solid #87e8de', borderRadius: '12px' }}>
+                      <Col span={6}>
+                        <Card size="small" title={<Space><BankOutlined style={{ color: '#13c2c2' }} /><span>公用事业倍率</span></Space>} style={{ background: '#e6fffb', border: '1px solid #87e8de', borderRadius: '12px', height: '100%' }}>
                           <Form.List name="utilityMultipliers">
                             {(fields) => (
-                              <Row gutter={12}>
+                              <Row gutter={8}>
                                 {fields.map((field, index) => (
                                   <Col span={12} key={field.key}>
                                     <Form.Item 
                                       {...field} 
-                                      label={<span style={{ fontSize: '12px', color: '#8c8c8c' }}>持有 {index + 1} 个时</span>}
+                                      label={<span style={{ fontSize: '11px', color: '#8c8c8c' }}>{index + 1}个时</span>}
                                       style={{ marginBottom: 0 }}
                                     >
                                       <InputNumber 
                                         style={{ width: '100%', borderRadius: '6px' }} 
-                                        prefix="点数×" 
+                                        prefix="×" 
                                         controls={false}
                                       />
                                     </Form.Item>
@@ -387,9 +390,30 @@ const EconomicManager: React.FC = () => {
                               </Row>
                             )}
                           </Form.List>
-                          <div style={{ marginTop: 8, fontSize: '11px', color: '#13c2c2', display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <BankOutlined /> 公用事业规则：租金 = 访客甩出的点数之和 × 对应倍率。
-                          </div>
+                        </Card>
+                      </Col>
+                      <Col span={6}>
+                        <Card size="small" title={<Space><SecurityScanOutlined style={{ color: '#ff4d4f' }} /><span>监狱规则</span></Space>} style={{ background: '#fff1f0', border: '1px solid #ffa39e', borderRadius: '12px', height: '100%' }}>
+                          <Space direction="vertical" style={{ width: '100%' }} size={4}>
+                            <Row gutter={8}>
+                              <Col span={12}>
+                                <Form.Item name={['jailRules', 'bailAmount']} label={<span style={{ fontSize: '11px', color: '#8c8c8c' }}>保释金</span>} style={{ marginBottom: 0 }}>
+                                  <InputNumber style={{ width: '100%', borderRadius: '6px' }} prefix="¥" controls={false} />
+                                </Form.Item>
+                              </Col>
+                              <Col span={12}>
+                                <Form.Item name={['jailRules', 'maxTurns']} label={<span style={{ fontSize: '11px', color: '#8c8c8c' }}>最大回合</span>} style={{ marginBottom: 0 }}>
+                                  <InputNumber style={{ width: '100%', borderRadius: '6px' }} suffix="轮" controls={false} />
+                                </Form.Item>
+                              </Col>
+                            </Row>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                              <span style={{ fontSize: '11px', color: '#8c8c8c' }}>允许双数出狱</span>
+                              <Form.Item name={['jailRules', 'allowDoubles']} valuePropName="checked" style={{ marginBottom: 0 }}>
+                                <Switch size="small" />
+                              </Form.Item>
+                            </div>
+                          </Space>
                         </Card>
                       </Col>
                     </Row>
@@ -536,4 +560,3 @@ const EconomicManager: React.FC = () => {
 };
 
 export default EconomicManager;
-
