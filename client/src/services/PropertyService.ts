@@ -3,12 +3,8 @@ export interface Property {
   name: string;
   themeId: string;       // 修改为 id
   type: 'normal' | 'station' | 'utility';
-  rentLevelId?: string; // 关联经济等级
-  colorGroup: string;
-  price: number;
-  houseCost: number;
-  rentCurve: number[]; // 修改为数组曲线 [基础, 1房, 2房, 3房, 4房, 旅馆]
-  description?: string; // 新增
+  rentLevelId?: string; // 关联经济等级 (引用经济模板后，price, houseCost, rentCurve 均从此引用)
+  description?: string;
   createdAt: string;
   updatedAt?: string;
 }

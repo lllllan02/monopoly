@@ -96,14 +96,10 @@ app.post('/api/properties', async (req, res) => {
   const newProperty = {
     id: uuidv4(),
     name: req.body.name || '未命名房产',
-    theme: req.body.theme || '经典', // 新增：主题
-    type: req.body.type || 'normal', // 新增：类型 (normal, station, utility)
-    colorGroup: req.body.colorGroup || '#8c8c8c',
-    price: Number(req.body.price) || 200,
-    houseCost: Number(req.body.houseCost) || 50,
-    baseRent: Number(req.body.baseRent) || 20,
-    rentMultipliers: req.body.rentMultipliers || [1, 5, 15, 45, 80, 125],
-    description: req.body.description || '', // 新增：描述
+    themeId: req.body.themeId || '', 
+    type: req.body.type || 'normal', 
+    rentLevelId: req.body.rentLevelId || '',
+    description: req.body.description || '', 
     createdAt: new Date().toISOString()
   };
 

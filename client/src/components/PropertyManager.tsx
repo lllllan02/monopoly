@@ -47,15 +47,7 @@ const PropertyManager: React.FC = () => {
   }, []);
 
   const handleLevelChange = (levelId: string) => {
-    const level = rentLevels.find(l => l.id === levelId);
-    if (level) {
-      form.setFieldsValue({
-        price: level.purchasePrice,
-        houseCost: level.houseCost,
-        rentCurve: level.rentCurve,
-        colorGroup: level.color // 同步颜色
-      });
-    }
+    // 之前需要同步字段，现在不再需要，因为房产直接引用等级 ID
   };
 
   // 根据当前表单选择的主题过滤经济等级
@@ -81,8 +73,7 @@ const PropertyManager: React.FC = () => {
     form.resetFields();
     form.setFieldsValue({ 
       themeId: themes[0]?.id || '', 
-      type: 'normal', 
-      rentCurve: [0, 0, 0, 0, 0, 0] 
+      type: 'normal'
     });
     setIsModalVisible(true);
   };
@@ -169,57 +160,18 @@ const PropertyManager: React.FC = () => {
       }
     },
     { 
-      title: '颜色组', 
-      dataIndex: 'colorGroup', 
-      key: 'colorGroup',
-      render: (color: string) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 16, height: 16, borderRadius: 2, background: color, border: '1px solid #ddd' }} />
-          <code>{color}</code>
-        </div>
-      )
-    },
-    { title: '价格', dataIndex: 'price', key: 'price', sorter: (a: any, b: any) => a.price - b.price },
-    { 
-      title: '租金梯度', 
-      dataIndex: 'rentCurve', 
-      key: 'rentCurve',
-      width: 200,
-      render: (curve: number[], record: Property) => {
-        if (record.type !== 'normal' || !curve) return <Text type="secondary">-</Text>;
-        const maxVal = Math.max(...curve);
+      title: '经济等级', 
+      dataIndex: 'rentLevelId', 
+      key: 'rentLevelId',
+      render: (levelId: string, record: Property) => {
+        if (record.type !== 'normal') return <Text type="secondary">-</Text>;
+        const level = rentLevels.find(l => l.id === levelId);
+        if (!level) return <Tag color="warning">未关联等级</Tag>;
         return (
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', height: '40px', width: '100%' }}>
-            {curve.map((val, i) => {
-              const height = (val / maxVal) * 35 || 5;
-              const isMax = i === curve.length - 1;
-              const isEmptyLand = i === 0;
-              
-              let bgColor = '#e6f7ff';
-              let borderColor = '#bae7ff';
-
-              if (isMax) {
-                bgColor = '#1890ff';
-                borderColor = 'transparent';
-              } else if (isEmptyLand) {
-                bgColor = '#fff7e6';
-                borderColor = '#ffe7ba';
-              }
-
-              return (
-                <Tooltip key={i} title={`${i === 0 ? '地块' : `${i}级`}: ¥${val}`}>
-                  <div style={{ 
-                    flex: 1,
-                    background: bgColor,
-                    height: `${height}px`,
-                    borderRadius: '4px 4px 1px 1px',
-                    border: `1px solid ${borderColor}`,
-                    borderBottom: 'none'
-                  }} />
-                </Tooltip>
-              );
-            })}
-          </div>
+          <Space>
+            <div style={{ width: 12, height: 12, borderRadius: '50%', background: level.color }} />
+            <Text strong>{level.name}</Text>
+          </Space>
         );
       }
     },
@@ -338,7 +290,7 @@ const PropertyManager: React.FC = () => {
           <Row gutter={16}>
             <Col span={8}>
               <Form.Item name="name" label="房产名称" rules={[{ required: true }]}>
-                <Input />
+                <Input placeholder="输入房产名称" />
               </Form.Item>
             </Col>
             <Col span={8}>
@@ -351,11 +303,13 @@ const PropertyManager: React.FC = () => {
               </Form.Item>
             </Col>
             <Col span={8}>
-              <Form.Item name="rentLevelId" label="经济等级">
+              <Form.Item 
+                name="rentLevelId" 
+                label="经济等级模板" 
+                rules={[{ required: true, message: '普通土地必须关联等级' }]}
+              >
                 <Select 
-                  placeholder={currentThemeId ? "自动填充" : "请先选择主题"} 
-                  allowClear 
-                  onChange={handleLevelChange}
+                  placeholder={currentThemeId ? "选择该主题下的等级" : "请先选择主题"} 
                   disabled={!currentThemeId}
                 >
                   {filteredRentLevels.map(l => (
@@ -367,7 +321,7 @@ const PropertyManager: React.FC = () => {
           </Row>
 
           <Row gutter={16}>
-            <Col span={12}>
+            <Col span={24}>
               <Form.Item name="type" label="房产类型" rules={[{ required: true }]}>
                 <Select>
                   <Option value="normal">普通土地</Option>
@@ -376,53 +330,7 @@ const PropertyManager: React.FC = () => {
                 </Select>
               </Form.Item>
             </Col>
-            <Col span={12}>
-              <Form.Item 
-                name="colorGroup" 
-                label={currentLevelId ? "颜色组 (随等级自动同步)" : "颜色组 (手动指定)"}
-              >
-                <Input type="color" style={{ height: 32, padding: 2 }} disabled={!!currentLevelId} />
-              </Form.Item>
-            </Col>
           </Row>
-
-          <Divider orientation="left" plain>经济参数</Divider>
-
-          <Row gutter={16}>
-            <Col span={8}>
-              <Form.Item name="price" label="购买价格" rules={[{ required: true }]}>
-                <InputNumber style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item name="houseCost" label="建房费用">
-                <InputNumber style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Form.Item label="租金曲线 (基础 / 每级增加)">
-            <Form.List name="rentCurve">
-              {(fields) => (
-                <Row gutter={[8, 8]}>
-                  {fields.map((field, index) => (
-                    <Col span={Math.max(4, 24 / fields.length)} key={field.key}>
-                      <Form.Item
-                        {...field}
-                        rules={[{ required: true, message: '' }]}
-                      >
-                        <InputNumber 
-                          placeholder={index === 0 ? '基准' : `${index}级`} 
-                          style={{ width: '100%' }} 
-                          controls={false}
-                        />
-                      </Form.Item>
-                    </Col>
-                  ))}
-                </Row>
-              )}
-            </Form.List>
-          </Form.Item>
 
           <Form.Item name="description" label="房产背景/描述">
             <TextArea rows={3} placeholder="输入一段有趣的背景故事..." />
