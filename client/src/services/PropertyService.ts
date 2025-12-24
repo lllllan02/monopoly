@@ -2,7 +2,7 @@ export interface Property {
   id: string;
   name: string;
   themeId: string;
-  type: 'normal' | 'station' | 'utility';
+  type: 'normal' | 'station' | 'utility' | 'start';
   rentLevelId?: string; // 仅普通土地使用
   price?: number;       // 购买价格（所有类型均可设置）
   houseCost?: number;   // 建设费用（仅普通土地使用）

@@ -5,6 +5,7 @@ export interface Theme {
   stationRent: number[];
   // 公用事业倍率: [拥有1座时的点数倍率, 拥有2座时的点数倍率]
   utilityMultipliers: number[];
+  goReward: number;         // 起点奖励金额
   // 监狱规则配置
   jailRules?: {
     bailAmount: number;      // 保释金金额

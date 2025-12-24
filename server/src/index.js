@@ -67,19 +67,33 @@ app.get('/api/themes', (req, res) => {
 });
 
 app.post('/api/themes', async (req, res) => {
+  const themeId = uuidv4();
   const newTheme = {
-    id: uuidv4(),
+    id: themeId,
     name: req.body.name || '新主题',
     stationRent: req.body.stationRent || [25, 50, 100, 200],
     utilityMultipliers: req.body.utilityMultipliers || [4, 10],
+    goReward: req.body.goReward || 200,
     jailRules: req.body.jailRules || {
       bailAmount: 50,
       maxTurns: 3,
       allowDoubles: true
     }
   };
+
+  // 自动为新主题创建一个起点地块
+  const startTile = {
+    id: uuidv4(),
+    name: '起点',
+    themeId: themeId,
+    type: 'start',
+    description: '游戏的起点，路过此地可领取奖励。'
+  };
+
   dbThemes.data.themes.push(newTheme);
-  await dbThemes.write();
+  dbProperties.data.properties.push(startTile);
+  
+  await Promise.all([dbThemes.write(), dbProperties.write()]);
   res.status(201).json(newTheme);
 });
 

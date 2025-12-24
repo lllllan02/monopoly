@@ -59,6 +59,7 @@ const EconomicManager: React.FC = () => {
       themeForm.setFieldsValue({
         stationRent: currentTheme.stationRent || [25, 50, 100, 200],
         utilityMultipliers: currentTheme.utilityMultipliers || [4, 10],
+        goReward: currentTheme.goReward || 200,
         jailRules: currentTheme.jailRules || {
           bailAmount: 50,
           maxTurns: 3,
@@ -325,29 +326,45 @@ const EconomicManager: React.FC = () => {
                   
                   <Form form={themeForm} layout="vertical">
                     <Row gutter={24}>
-                      <Col span={12}>
-                        <Card size="small" title={<Space><RocketOutlined style={{ color: '#fa8c16' }} /><span>车站租金梯队</span></Space>} style={{ background: '#fff7e6', border: '1px solid #ffd591', borderRadius: '12px' }}>
-                          <Form.List name="stationRent">
-                            {(fields) => (
-                              <Row gutter={8}>
-                                {fields.map((field, index) => (
-                                  <Col span={6} key={field.key}>
-                                    <Form.Item 
-                                      {...field} 
-                                      label={<span style={{ fontSize: '11px', color: '#8c8c8c' }}>{index + 1}座时</span>}
-                                      style={{ marginBottom: 0 }}
-                                    >
-                                      <InputNumber 
-                                        style={{ width: '100%', borderRadius: '6px' }} 
-                                        prefix="¥" 
-                                        controls={false}
-                                      />
-                                    </Form.Item>
-                                  </Col>
-                                ))}
-                              </Row>
-                            )}
-                          </Form.List>
+                    <Col span={6}>
+                      <Card size="small" title={<Space><RocketOutlined style={{ color: '#fa8c16' }} /><span>车站租金梯队</span></Space>} style={{ background: '#fff7e6', border: '1px solid #ffd591', borderRadius: '12px', height: '100%' }}>
+                        <Form.List name="stationRent">
+                          {(fields) => (
+                            <Row gutter={8}>
+                              {fields.map((field, index) => (
+                                <Col span={12} key={field.key}>
+                                  <Form.Item 
+                                    {...field} 
+                                    label={<span style={{ fontSize: '11px', color: '#8c8c8c' }}>{index + 1}座时</span>}
+                                    style={{ marginBottom: 4 }}
+                                  >
+                                    <InputNumber 
+                                      style={{ width: '100%', borderRadius: '6px' }} 
+                                      prefix="¥" 
+                                      controls={false}
+                                    />
+                                  </Form.Item>
+                                </Col>
+                              ))}
+                            </Row>
+                          )}
+                        </Form.List>
+                      </Card>
+                    </Col>
+                      <Col span={6}>
+                        <Card size="small" title={<Space><RocketOutlined style={{ color: '#fa8c16' }} /><span>起点奖励金额</span></Space>} style={{ background: '#f6ffed', border: '1px solid #b7eb8f', borderRadius: '12px', height: '100%' }}>
+                          <Form.Item name="goReward" label={<span style={{ fontSize: '11px', color: '#8c8c8c' }}>路过奖励</span>} style={{ marginBottom: 0 }}>
+                            <InputNumber 
+                              style={{ width: '100%', borderRadius: '6px' }} 
+                              prefix="¥" 
+                              controls={false}
+                              placeholder="200"
+                              formatter={value => value ? `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : ''}
+                            />
+                          </Form.Item>
+                          <div style={{ fontSize: '11px', color: '#52c41a', marginTop: 8, opacity: 0.8 }}>
+                            玩家每次路过起点领取的现金。
+                          </div>
                         </Card>
                       </Col>
                       <Col span={6}>

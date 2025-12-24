@@ -144,7 +144,8 @@ const PropertyManager: React.FC = () => {
         const config: Record<string, { color: string, text: string }> = {
           normal: { color: 'blue', text: '土地' },
           station: { color: 'volcano', text: '车站' },
-          utility: { color: 'cyan', text: '公用' }
+          utility: { color: 'cyan', text: '公用' },
+          start: { color: 'gold', text: '起点' }
         };
         const item = config[record.type] || config.normal;
         return <Tag bordered={false} color={item.color} style={{ borderRadius: '4px', margin: 0, fontSize: '12px', padding: '0 8px' }}>{item.text}</Tag>;
@@ -172,6 +173,13 @@ const PropertyManager: React.FC = () => {
       minWidth: 320,
       render: (_: any, record: Property) => {
         if (!record) return null;
+        if (record.type === 'start') {
+          return (
+            <Tag bordered={false} color="green" style={{ borderRadius: '6px', padding: '4px 12px', fontSize: '13px' }}>
+              🚩 非售卖资产（奖励点）
+            </Tag>
+          );
+        }
         if (record.type === 'normal') {
           return (
             <div style={{ 
@@ -217,16 +225,31 @@ const PropertyManager: React.FC = () => {
       render: (_: any, record: Property) => (
         <Space>
           <Button type="text" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)} />
-          <Tooltip title="克隆地块">
-            <Button type="text" size="small" icon={<CopyOutlined />} onClick={() => handleClone(record)} />
+          <Tooltip title={record.type === 'start' ? "起点地块不可克隆" : "克隆地块"}>
+            <Button 
+              type="text" 
+              size="small" 
+              icon={<CopyOutlined />} 
+              onClick={() => handleClone(record)} 
+              disabled={record.type === 'start'}
+            />
           </Tooltip>
           <Popconfirm 
             title="确定要删除这个地块吗？" 
             onConfirm={() => handleDelete(record.id)}
             okText="确定"
             cancelText="取消"
+            disabled={record.type === 'start'}
           >
-            <Button type="text" size="small" danger icon={<DeleteOutlined />} />
+            <Tooltip title={record.type === 'start' ? "主题起点地块不可删除" : ""}>
+              <Button 
+                type="text" 
+                size="small" 
+                danger 
+                icon={<DeleteOutlined />} 
+                disabled={record.type === 'start'}
+              />
+            </Tooltip>
           </Popconfirm>
         </Space>
       ),
@@ -332,16 +355,26 @@ const PropertyManager: React.FC = () => {
             <Row gutter={20}>
               <Col span={12}>
                 <Form.Item name="type" label={<span style={{ fontWeight: 600, color: '#595959' }}>地块功能类型</span>} rules={[{ required: true }]}>
-                  <Select size="large" style={{ borderRadius: '8px' }}>
+                  <Select 
+                    size="large" 
+                    style={{ borderRadius: '8px' }}
+                    disabled={editingProperty?.type === 'start'}
+                  >
                     <Select.Option value="normal">🏠 普通土地 (可盖楼)</Select.Option>
                     <Select.Option value="station">🚂 交通枢纽 (车站)</Select.Option>
                     <Select.Option value="utility">💡 公用事业 (水/电)</Select.Option>
+                    <Select.Option value="start" disabled={editingProperty?.type !== 'start'}>🚩 起点 (系统预设)</Select.Option>
                   </Select>
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item name="themeId" label={<span style={{ fontWeight: 600, color: '#595959' }}>所属游戏主题</span>} rules={[{ required: true }]}>
-                  <Select size="large" placeholder="选择地块所属主题" style={{ borderRadius: '8px' }}>
+                  <Select 
+                    size="large" 
+                    placeholder="选择地块所属主题" 
+                    style={{ borderRadius: '8px' }}
+                    disabled={!!editingProperty}
+                  >
                     {(themes || []).map(t => (
                       <Select.Option key={t?.id} value={t?.id}>{t?.name}</Select.Option>
                     ))}
@@ -421,6 +454,12 @@ const PropertyManager: React.FC = () => {
                     </Form.Item>
                   </Col>
                 </Row>
+              </div>
+            ) : currentType === 'start' ? (
+              <div style={{ padding: '24px', background: '#f6ffed', border: '1px solid #b7eb8f', borderRadius: '12px' }}>
+                <Text type="secondary">
+                  起点地块无需设置独立价格。路过奖励已在 <Text strong style={{ color: '#52c41a' }}>[经济体系] - [核心规则配置]</Text> 中全局定义。
+                </Text>
               </div>
             ) : (
               <div style={{ padding: '24px', background: '#fff7e6', border: '1px solid #ffd591', borderRadius: '12px' }}>
