@@ -212,6 +212,39 @@ app.delete('/api/maps/:id', async (req, res) => {
 // --- 卡片 API ---
 app.get('/api/cards', (req, res) => res.json(dbCards.data.cards));
 
+app.post('/api/cards', async (req, res) => {
+  const newCard = {
+    id: generateId('card'),
+    themeId: req.body.themeId,
+    ...req.body
+  };
+  dbCards.data.cards.push(newCard);
+  await dbCards.write();
+  res.status(201).json(newCard);
+});
+
+app.put('/api/cards/:id', async (req, res) => {
+  const { id } = req.params;
+  const index = dbCards.data.cards.findIndex(c => c.id === id);
+  if (index !== -1) {
+    dbCards.data.cards[index] = { 
+      ...dbCards.data.cards[index], 
+      ...req.body 
+    };
+    await dbCards.write();
+    res.json(dbCards.data.cards[index]);
+  } else {
+    res.status(404).send('Not found');
+  }
+});
+
+app.delete('/api/cards/:id', async (req, res) => {
+  const { id } = req.params;
+  dbCards.data.cards = dbCards.data.cards.filter(c => c.id !== id);
+  await dbCards.write();
+  res.status(204).send();
+});
+
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on http://0.0.0.0:${PORT}`);

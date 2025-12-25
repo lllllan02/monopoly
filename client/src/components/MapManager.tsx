@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { 
   Table, Button, Modal, Form, Input, InputNumber, 
   Space, message, Tag, Select, Typography, 
-  Popconfirm, Tabs 
+  Popconfirm, Tabs, Layout 
 } from 'antd';
 import { 
   EnvironmentOutlined, 
@@ -15,8 +15,7 @@ import {
   ArrowLeftOutlined,
   DragOutlined
 } from '@ant-design/icons';
-import { Layout } from 'antd';
-import { type Map, MapService, type MapSlot } from '../services/MapService';
+import { type Map, MapService } from '../services/MapService';
 import { type Theme, ThemeService } from '../services/ThemeService';
 import { type Property, PropertyService } from '../services/PropertyService';
 

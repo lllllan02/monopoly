@@ -7,11 +7,14 @@ import { PropertyService, type Property } from '../services/PropertyService';
 import { MapService } from '../services/MapService';
 import { RentLevelService } from '../services/RentLevelService';
 
+import { CardService } from '../services/CardService';
+
 interface ThemeWithStats extends Theme {
   defaultTileCount: number;
   customTileCount: number;
   rentLevelCount: number;
   mapCount: number;
+  cardCount: number;
 }
 
 const ThemeManager: React.FC = () => {
@@ -23,17 +26,19 @@ const ThemeManager: React.FC = () => {
 
   const fetchThemesAndStats = async () => {
     try {
-      const [themesData, propsData, mapsData, levelsData] = await Promise.all([
+      const [themesData, propsData, mapsData, levelsData, cardsData] = await Promise.all([
         ThemeService.getAll().catch(() => []),
         PropertyService.getAll().catch(() => []),
         MapService.getAll().catch(() => []),
-        RentLevelService.getAll().catch(() => [])
+        RentLevelService.getAll().catch(() => []),
+        CardService.getAll().catch(() => [])
       ]);
 
       const safeThemes = Array.isArray(themesData) ? themesData : [];
       const safeProps = Array.isArray(propsData) ? propsData : [] as Property[];
       const safeMaps = Array.isArray(mapsData) ? mapsData : [];
       const safeLevels = Array.isArray(levelsData) ? levelsData : [];
+      const safeCards = Array.isArray(cardsData) ? cardsData : [];
 
       const themesWithStats = safeThemes.map(theme => {
         if (!theme || !theme.id) return null;
@@ -43,7 +48,8 @@ const ThemeManager: React.FC = () => {
           defaultTileCount: themeProps.filter(p => p.isDefault).length,
           customTileCount: themeProps.filter(p => !p.isDefault).length,
           rentLevelCount: safeLevels.filter((l: any) => l && l.themeId === theme.id).length,
-          mapCount: safeMaps.filter((m: any) => m && m.themeId === theme.id).length
+          mapCount: safeMaps.filter((m: any) => m && m.themeId === theme.id).length,
+          cardCount: safeCards.filter((c: any) => c && c.themeId === theme.id).length
         };
       }).filter(Boolean) as ThemeWithStats[];
 
@@ -162,6 +168,15 @@ const ThemeManager: React.FC = () => {
             <EnvironmentOutlined style={{ color: '#52c41a', opacity: 0.6 }} /> 
             <span style={{ color: '#8c8c8c' }}>地图:</span>
             <Typography.Text strong style={{ color: '#52c41a' }}>{record.mapCount}</Typography.Text>
+          </Space>
+          <Space 
+            size={4} 
+            className="clickable-stat"
+            onClick={() => navigate('/admin/cards', { state: { themeId: record.id } })}
+          >
+            <IdcardOutlined style={{ color: '#eb2f96', opacity: 0.6 }} /> 
+            <span style={{ color: '#8c8c8c' }}>卡片:</span>
+            <Typography.Text strong style={{ color: '#eb2f96' }}>{record.cardCount}</Typography.Text>
           </Space>
         </Space>
       )

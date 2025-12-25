@@ -5,6 +5,7 @@ import PropertyManager from './components/PropertyManager';
 import ThemeManager from './components/ThemeManager';
 import EconomicManager from './components/EconomicManager';
 import MapManager from './components/MapManager';
+import CardManager from './components/CardManager';
 import './App.css';
 
 // alert('App is loading...');
@@ -63,7 +64,7 @@ function App() {
           <Route path="rent-levels" element={<EconomicManager />} />
           <Route path="themes" element={<ThemeManager />} />
           <Route path="maps" element={<MapManager />} />
-          <Route path="cards" element={<div style={{ padding: 40, textAlign: 'center' }}><h3>卡片管理模块正在开发中...</h3></div>} />
+          <Route path="cards" element={<CardManager />} />
         </Route>
 
         {/* 404 跳转 */}

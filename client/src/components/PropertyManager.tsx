@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { 
   Table, Button, Modal, Form, Input, InputNumber, 
-  Space, message, Tag, Select, Tooltip, Row, Col, Typography, Tabs, Popconfirm, Card, Divider, Alert
+  Space, message, Tag, Select, Tooltip, Row, Col, Typography, Tabs, Popconfirm, Divider, Alert
 } from 'antd';
 import { 
   BankOutlined, 
@@ -11,15 +11,14 @@ import {
   EditOutlined,
   DeleteOutlined,
   PlusOutlined,
-  BuildOutlined,
-  RocketOutlined
+  BuildOutlined
 } from '@ant-design/icons';
 import { type Property, PropertyService } from '../services/PropertyService';
 import { type Theme, ThemeService } from '../services/ThemeService';
 import { type RentLevel, RentLevelService } from '../services/RentLevelService';
 
 const { TextArea } = Input;
-const { Text, Title, Paragraph } = Typography;
+const { Text } = Typography;
 
 const PropertyManager: React.FC = () => {
   const location = useLocation();
