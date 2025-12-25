@@ -300,8 +300,7 @@ const PropertyManager: React.FC = () => {
             height: '50px', 
             padding: '0 32px', 
             fontSize: '16px',
-            fontWeight: 600,
-            boxShadow: '0 4px 12px rgba(24, 144, 255, 0.25)'
+            fontWeight: 600
           }}
         >
           创建新地块
@@ -499,7 +498,7 @@ const PropertyManager: React.FC = () => {
             </Space>
 
             {currentType === 'normal' ? (
-              <div style={{ padding: '24px', background: '#fcfcfc', border: '1px solid #f0f0f0', borderRadius: '12px' }}>
+              <div style={{ padding: '8px 0' }}>
                 <Row gutter={20}>
                   <Col span={24}>
                     <Form.Item 
