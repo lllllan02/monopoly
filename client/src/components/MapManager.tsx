@@ -233,10 +233,10 @@ const MapManager: React.FC = () => {
                 <div
                   key={opt.value}
                   onClick={() => setSecondaryFilter(opt.value)}
-                  style={{ 
+              style={{
                     padding: '2px 10px',
-                    borderRadius: '4px',
-                    fontSize: '12px',
+                borderRadius: '4px',
+                fontSize: '12px',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
                     border: '1px solid',
@@ -264,8 +264,8 @@ const MapManager: React.FC = () => {
                   key={`${item.propertyId}`}
                   size="small"
                   hoverable
-                  draggable
-                  onDragStart={(e) => {
+              draggable
+              onDragStart={(e) => {
                     e.dataTransfer.setData('offsetX', (GRID_SIZE / 2).toString());
                     e.dataTransfer.setData('offsetY', (GRID_SIZE / 2).toString());
                     e.dataTransfer.setData('propertyId', item.propertyId);
@@ -273,10 +273,10 @@ const MapManager: React.FC = () => {
                     e.dataTransfer.setData('sourceIndex', '');
                   }}
                   bodyStyle={{ padding: '12px' }}
-                  style={{ 
+              style={{
                     cursor: 'grab', 
                     border: '1px solid #f0f0f0',
-                    background: '#fff',
+                background: '#fff',
                     position: 'relative',
                     overflow: 'hidden'
                   }}
@@ -286,9 +286,9 @@ const MapManager: React.FC = () => {
                       width: '32px', 
                       height: '32px', 
                       background: isProperty ? '#e6f7ff' : '#f6ffed',
-                      borderRadius: '6px',
-                      display: 'flex',
-                      alignItems: 'center',
+                borderRadius: '6px',
+                display: 'flex',
+                alignItems: 'center',
                       justifyContent: 'center',
                       fontSize: '18px',
                       color: typeColor,
@@ -433,6 +433,7 @@ const MapManager: React.FC = () => {
     const headerColor = rentLevel?.color || config.color;
     
     const isSpecialType = ['start', 'jail', 'fate', 'chance', 'tax', 'chest'].includes(slot.type);
+    const isCustomProperty = slot.type === 'property' || slot.type === 'normal';
     
     return (
       <div 
@@ -446,127 +447,40 @@ const MapManager: React.FC = () => {
           e.dataTransfer.setData('slotType', slot.type);
         }}
         style={{
-          width: GRID_SIZE - 2,
-          height: GRID_SIZE - 2,
-          border: `2px solid ${config.color}`,
+          width: GRID_SIZE,
+          height: GRID_SIZE,
           borderRadius: '4px',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'flex-start',
-          background: config.bg,
+          justifyContent: 'center',
+          background: '#fff',
           position: 'absolute',
-          left: ((slot.x || 0) - originX) + 1,
-          top: ((slot.y || 0) - originY) + 1,
+          left: (slot.x || 0) - originX,
+          top: (slot.y || 0) - originY,
           textAlign: 'center',
-          transition: 'all 0.2s',
+          transition: 'all 0.2s ease',
           cursor: 'move',
-          zIndex: isSpecialType ? 15 : 10, // 特殊地块层级更高
-          boxShadow: '0 4px 8px rgba(0,0,0,0.12)',
-          overflow: isSpecialType ? 'visible' : 'hidden' // 特殊地块允许溢出
+          zIndex: 10,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          overflow: 'hidden',
+          border: '1.5px solid rgba(0,0,0,0.15)' // 更加突出的地块边界
         }}
       >
-        {/* 顶部色块：模仿大富翁经典设计 */}
+        {/* 序号标记 */}
         <div style={{ 
-          width: '100%', 
-          height: '18px', 
-          background: headerColor, 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center',
-          borderBottom: `1px solid rgba(0,0,0,0.1)`,
-          zIndex: 2 // 确保文字不被图标遮挡
+          fontSize: '9px', 
+          color: 'rgba(0,0,0,0.3)', 
+          position: 'absolute', 
+          top: 2, 
+          left: 4, 
+          zIndex: 6,
+          fontWeight: 600
         }}>
-          <span style={{ fontSize: '9px', color: '#fff', fontWeight: 'bold', textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
-            {config.label}
-          </span>
+          #{index + 1}
         </div>
 
-        {/* 主体 Logo 区域 */}
-        <div style={{ 
-          flex: 1, 
-          width: '100%', 
-          display: 'flex', 
-          flexDirection: 'column',
-          alignItems: 'center', 
-          justifyContent: 'center',
-          padding: '4px',
-          position: 'relative',
-          overflow: isSpecialType ? 'visible' : 'hidden'
-        }}>
-          {slot.icon ? (() => {
-            const iconValue = Array.isArray(slot.icon) ? slot.icon[0] : slot.icon;
-            const isUrl = iconValue && (iconValue.startsWith('http') || iconValue.startsWith('/') || iconValue.startsWith('data:'));
-            
-            // 特殊地块的大图案样式
-            const specialImgStyle: React.CSSProperties = {
-              width: GRID_SIZE * 1.1, // 略大于格子
-              height: GRID_SIZE * 1.1,
-              objectFit: 'contain',
-              position: 'absolute',
-              bottom: '-5px', // 向下偏移，产生立体感
-              filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))',
-              pointerEvents: 'none' // 防止遮挡拖拽
-            };
-
-            // 普通地块的矢量图样式
-            const normalImgStyle: React.CSSProperties = {
-              width: '42px', 
-              height: '42px', 
-              objectFit: 'contain'
-            };
-
-            return (
-              <div style={{ 
-                width: isSpecialType ? '100%' : '42px', 
-                height: isSpecialType ? '100%' : '42px', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                position: isSpecialType ? 'static' : 'relative'
-              }}>
-                {isUrl ? (
-                  <img 
-                    src={iconValue} 
-                    style={isSpecialType ? specialImgStyle : normalImgStyle} 
-                    alt="logo" 
-                  />
-                ) : iconValue && iconValue.trim().startsWith('<svg') ? (
-                  <div 
-                    style={isSpecialType ? { ...specialImgStyle, display: 'flex', alignItems: 'center', justifyContent: 'center' } : { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    dangerouslySetInnerHTML={{ __html: iconValue }}
-                  />
-                ) : (
-                  <span style={{ fontSize: isSpecialType ? '48px' : '32px', transform: isSpecialType ? 'translateY(5px)' : 'none' }}>
-                    {iconValue}
-                  </span>
-                )}
-              </div>
-            );
-          })() : (
-            <div style={{ fontSize: '24px', opacity: 0.2 }}>{config.label[0]}</div>
-          )}
-
-          {/* 名称层叠在底部 */}
-          <div style={{ 
-            fontSize: '10px', 
-            fontWeight: 'bold', 
-            color: '#333', 
-            width: '90%',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            marginTop: '2px',
-            background: isSpecialType ? 'rgba(255,255,255,0.7)' : 'transparent',
-            borderRadius: '2px',
-            zIndex: 3
-          }}>
-            {slot.name}
-          </div>
-        </div>
-
-        <div style={{ fontSize: '8px', color: '#bfbfbf', position: 'absolute', top: 2, left: 3, zIndex: 5 }}>#{index + 1}</div>
-        
+        {/* 删除按钮 */}
         <Button 
           type="text" 
           size="small" 
@@ -576,14 +490,18 @@ const MapManager: React.FC = () => {
             position: 'absolute', 
             top: 2, 
             right: 2, 
-            height: '16px', 
-            width: '16px', 
-            minWidth: '16px', 
-            background: 'rgba(255,255,255,0.8)', 
-            boxShadow: '0 1px 4px rgba(0,0,0,0.1)', 
-            borderRadius: '50%', 
+            height: '18px', 
+            width: '18px', 
+            minWidth: '18px', 
+            background: 'rgba(0,0,0,0.05)', 
+            borderRadius: '3px', 
             padding: 0,
-            zIndex: 20
+            zIndex: 20,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: 'none',
+            color: '#ff4d4f'
           }}
           onClick={(e) => {
             e.stopPropagation();
@@ -592,6 +510,75 @@ const MapManager: React.FC = () => {
             updateMapWithHistory({ ...currentMap!, slots: newSlots });
           }}
         />
+
+        {/* 主体 Logo 区域 - 撑满 */}
+        <div style={{ 
+          flex: 1, 
+          width: '100%', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          padding: 0,
+          position: 'relative',
+          overflow: 'hidden'
+        }}>
+          {!isCustomProperty && slot.icon ? (() => {
+            const iconValue = Array.isArray(slot.icon) ? slot.icon[0] : slot.icon;
+            const isUrl = iconValue && (iconValue.startsWith('http') || iconValue.startsWith('/') || iconValue.startsWith('data:'));
+            
+            const iconImgStyle: React.CSSProperties = {
+              width: '100%', 
+              height: '100%',
+              objectFit: 'cover',
+              pointerEvents: 'none'
+            };
+
+            return (
+              <div style={{ width: '100%', height: '100%' }}>
+                {isUrl ? (
+                  <img src={iconValue} style={iconImgStyle} alt="logo" />
+                ) : iconValue && iconValue.trim().startsWith('<svg') ? (
+                  <div 
+                    style={{ ...iconImgStyle, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    dangerouslySetInnerHTML={{ __html: iconValue }}
+                  />
+                ) : (
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px' }}>
+                    {iconValue}
+                  </div>
+                )}
+              </div>
+            );
+          })() : (
+            !isCustomProperty && <div style={{ fontSize: '24px', opacity: 0.1 }}>{config.label[0]}</div>
+          )}
+        </div>
+
+        {/* 底部名称浮层 */}
+        <div style={{ 
+          width: '100%', 
+          height: '24px', 
+          background: headerColor, 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          zIndex: 5,
+          padding: '0 2px'
+        }}>
+          <div style={{ 
+            fontSize: '11px', 
+            color: '#fff', 
+            fontWeight: 'bold', 
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            maxWidth: '100%',
+            textAlign: 'center',
+            textShadow: '0 1px 2px rgba(0,0,0,0.4)'
+          }}>
+            {slot.name}
+          </div>
+        </div>
       </div>
     );
   };
@@ -644,15 +631,17 @@ const MapManager: React.FC = () => {
               style={{ 
                 width: canvasWidth,
                 height: canvasHeight,
-                background: '#fff',
                 position: 'relative',
-                boxShadow: '0 0 20px rgba(0,0,0,0.05)',
+                backgroundColor: '#fff',
                 backgroundImage: `
-                  linear-gradient(to right, #f0f0f0 1px, transparent 1px),
-                  linear-gradient(to bottom, #f0f0f0 1px, transparent 1px)
+                  linear-gradient(to right, rgba(0,0,0,0.15) 1px, transparent 1px),
+                  linear-gradient(to bottom, rgba(0,0,0,0.15) 1px, transparent 1px),
+                  conic-gradient(#f5f5f5 25%, transparent 0 50%, #f5f5f5 0 75%, transparent 0)
                 `,
-                backgroundSize: `${GRID_SIZE}px ${GRID_SIZE}px`,
-                border: '1px solid #d9d9d9'
+                backgroundSize: `${GRID_SIZE}px ${GRID_SIZE}px, ${GRID_SIZE}px ${GRID_SIZE}px, 40px 40px`,
+                boxShadow: '0 0 20px rgba(0,0,0,0.1)',
+                border: '1px solid #d9d9d9',
+                borderRadius: '4px'
               }}
             >
               {currentMap?.slots.map((_, i) => renderSlot(i))}
