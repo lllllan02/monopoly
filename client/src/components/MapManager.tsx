@@ -24,7 +24,6 @@ const { Content, Sider } = Layout;
 const { Text, Title, Paragraph } = Typography;
 
 const GRID_SIZE = 80;
-const CANVAS_SIZE = 2400;
 
 const MapManager: React.FC = () => {
   const { message } = App.useApp();
@@ -112,6 +111,29 @@ const MapManager: React.FC = () => {
     setHistory([]); // 清空历史记录
     setIsEditorOpen(true);
   };
+
+  // 计算当前地块的边界逻辑
+  const getEditorBounds = () => {
+    if (!currentMap || currentMap.slots.length === 0) {
+      return { minX: 0, minY: 0, maxX: GRID_SIZE, maxY: GRID_SIZE, hasSlots: false };
+    }
+    const xCoords = currentMap.slots.map(s => s.x || 0);
+    const yCoords = currentMap.slots.map(s => s.y || 0);
+    return {
+      minX: Math.min(...xCoords),
+      minY: Math.min(...yCoords),
+      maxX: Math.max(...xCoords) + GRID_SIZE,
+      maxY: Math.max(...yCoords) + GRID_SIZE,
+      hasSlots: true
+    };
+  };
+
+  const bounds = getEditorBounds();
+  const canvasBuffer = bounds.hasSlots ? GRID_SIZE : 0; 
+  const originX = bounds.minX - canvasBuffer;
+  const originY = bounds.minY - canvasBuffer;
+  const canvasWidth = (bounds.maxX - bounds.minX) + canvasBuffer * 2;
+  const canvasHeight = (bounds.maxY - bounds.minY) + canvasBuffer * 2;
 
   const handleSaveEditor = async () => {
     if (!currentMap) return;
@@ -221,9 +243,9 @@ const MapManager: React.FC = () => {
     const offsetX = parseInt(e.dataTransfer.getData('offsetX') || '0');
     const offsetY = parseInt(e.dataTransfer.getData('offsetY') || '0');
 
-    // 计算放置位置：(鼠标当前坐标 - 容器左上角坐标 - 内部偏移量)
-    const rawX = e.clientX - rect.left - offsetX;
-    const rawY = e.clientY - rect.top - offsetY;
+    // 计算放置位置：(鼠标当前坐标 - 容器左上角坐标 + 逻辑起点坐标 - 内部偏移量)
+    const rawX = (e.clientX - rect.left) + originX - offsetX;
+    const rawY = (e.clientY - rect.top) + originY - offsetY;
 
     // 吸附到网格
     const x = Math.round(rawX / GRID_SIZE) * GRID_SIZE;
@@ -300,8 +322,8 @@ const MapManager: React.FC = () => {
           justifyContent: 'center',
           background: config.bg,
           position: 'absolute',
-          left: (slot.x || 0) + 2,
-          top: (slot.y || 0) + 2,
+          left: ((slot.x || 0) - originX) + 2,
+          top: ((slot.y || 0) - originY) + 2,
           padding: 6,
           textAlign: 'center',
           transition: 'box-shadow 0.2s',
@@ -392,8 +414,8 @@ const MapManager: React.FC = () => {
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
               style={{ 
-                width: CANVAS_SIZE,
-                height: CANVAS_SIZE,
+                width: canvasWidth,
+                height: canvasHeight,
                 background: '#fff',
                 position: 'relative',
                 boxShadow: '0 0 20px rgba(0,0,0,0.05)',
