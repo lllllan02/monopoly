@@ -1,16 +1,21 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Table, Button, Modal, Form, Input, Space, message, Popconfirm, Typography } from 'antd';
-import { RocketOutlined, BankOutlined, EnvironmentOutlined, PlusOutlined, BuildOutlined } from '@ant-design/icons';
+import { RocketOutlined, BankOutlined, EnvironmentOutlined, PlusOutlined, BuildOutlined, PercentageOutlined } from '@ant-design/icons';
 import { type Theme, ThemeService } from '../services/ThemeService';
-import { PropertyService } from '../services/PropertyService';
+import { PropertyService, type Property } from '../services/PropertyService';
 import { MapService } from '../services/MapService';
+import { RentLevelService } from '../services/RentLevelService';
 
 interface ThemeWithStats extends Theme {
-  propertyCount: number;
+  defaultTileCount: number;
+  customTileCount: number;
+  rentLevelCount: number;
   mapCount: number;
 }
 
 const ThemeManager: React.FC = () => {
+  const navigate = useNavigate();
   const [themes, setThemes] = useState<ThemeWithStats[]>([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingTheme, setEditingTheme] = useState<Theme | null>(null);
@@ -18,21 +23,26 @@ const ThemeManager: React.FC = () => {
 
   const fetchThemesAndStats = async () => {
     try {
-      const [themesData, propsData, mapsData] = await Promise.all([
+      const [themesData, propsData, mapsData, levelsData] = await Promise.all([
         ThemeService.getAll().catch(() => []),
         PropertyService.getAll().catch(() => []),
-        MapService.getAll().catch(() => [])
+        MapService.getAll().catch(() => []),
+        RentLevelService.getAll().catch(() => [])
       ]);
 
       const safeThemes = Array.isArray(themesData) ? themesData : [];
-      const safeProps = Array.isArray(propsData) ? propsData : [];
+      const safeProps = Array.isArray(propsData) ? propsData : [] as Property[];
       const safeMaps = Array.isArray(mapsData) ? mapsData : [];
+      const safeLevels = Array.isArray(levelsData) ? levelsData : [];
 
       const themesWithStats = safeThemes.map(theme => {
         if (!theme || !theme.id) return null;
+        const themeProps = safeProps.filter(p => p && p.themeId === theme.id);
         return {
           ...theme,
-          propertyCount: safeProps.filter((p: any) => p && p.themeId === theme.id).length,
+          defaultTileCount: themeProps.filter(p => p.isDefault).length,
+          customTileCount: themeProps.filter(p => !p.isDefault).length,
+          rentLevelCount: safeLevels.filter((l: any) => l && l.themeId === theme.id).length,
           mapCount: safeMaps.filter((m: any) => m && m.themeId === theme.id).length
         };
       }).filter(Boolean) as ThemeWithStats[];
@@ -103,7 +113,7 @@ const ThemeManager: React.FC = () => {
         <Space direction="vertical" size={2} style={{ paddingLeft: 16 }}>
           <Typography.Text strong style={{ fontSize: '16px' }}>{text}</Typography.Text>
           <div style={{ fontSize: '12px', color: '#bfbfbf', marginTop: 4 }}>
-            包含 {record.propertyCount} 个地块 · {record.mapCount} 张地图
+            包含 {record.defaultTileCount + record.customTileCount} 个地块 · {record.rentLevelCount} 个经济等级
           </div>
         </Space>
       )
@@ -111,14 +121,47 @@ const ThemeManager: React.FC = () => {
     {
       title: '关联内容统计',
       key: 'stats',
-      width: 300,
+      width: 450,
       render: (_: any, record: ThemeWithStats) => (
-        <Space size={24}>
-          <Space size={8} style={{ color: '#8c8c8c' }}>
-            <BankOutlined /> 地块: <Typography.Text strong>{record.propertyCount}</Typography.Text>
+        <Space size={20} style={{ fontSize: '13px' }}>
+          <Space 
+            size={4} 
+            className="clickable-stat"
+            onClick={() => navigate('/admin/properties', { state: { themeId: record.id, tab: 'default' } })}
+          >
+            <BankOutlined style={{ color: '#722ed1', opacity: 0.6 }} /> 
+            <span style={{ color: '#8c8c8c' }}>内置:</span>
+            <Typography.Text strong style={{ color: '#722ed1' }}>{record.defaultTileCount}</Typography.Text>
           </Space>
-          <Space size={8} style={{ color: '#8c8c8c' }}>
-            <EnvironmentOutlined /> 地图: <Typography.Text strong>{record.mapCount}</Typography.Text>
+          <Space 
+            size={4} 
+            className="clickable-stat"
+            onClick={() => navigate('/admin/properties', { state: { themeId: record.id, tab: 'custom' } })}
+          >
+            <BuildOutlined style={{ color: '#1890ff', opacity: 0.6 }} /> 
+            <span style={{ color: '#8c8c8c' }}>自定义:</span>
+            <Typography.Text strong style={{ color: '#1890ff' }}>{record.customTileCount}</Typography.Text>
+          </Space>
+          <Space size={4}>
+            <Typography.Text style={{ opacity: 0.2 }}>|</Typography.Text>
+          </Space>
+          <Space 
+            size={4} 
+            className="clickable-stat"
+            onClick={() => navigate('/admin/rent-levels', { state: { themeId: record.id } })}
+          >
+            <PercentageOutlined style={{ color: '#fa8c16', opacity: 0.6 }} /> 
+            <span style={{ color: '#8c8c8c' }}>经济等级:</span>
+            <Typography.Text strong style={{ color: '#fa8c16' }}>{record.rentLevelCount}</Typography.Text>
+          </Space>
+          <Space 
+            size={4} 
+            className="clickable-stat"
+            onClick={() => navigate('/admin/maps', { state: { themeId: record.id } })}
+          >
+            <EnvironmentOutlined style={{ color: '#52c41a', opacity: 0.6 }} /> 
+            <span style={{ color: '#8c8c8c' }}>地图:</span>
+            <Typography.Text strong style={{ color: '#52c41a' }}>{record.mapCount}</Typography.Text>
           </Space>
         </Space>
       )
@@ -133,7 +176,11 @@ const ThemeManager: React.FC = () => {
           <Button type="link" size="small" onClick={() => handleEdit(record)}>重命名</Button>
           <Popconfirm 
             title="确定要删除这个主题吗？" 
-            description={record.propertyCount > 0 ? `该主题下尚有 ${record.propertyCount} 个地块，删除后它们将失去分类。` : undefined}
+            description={
+              (record.defaultTileCount + record.customTileCount) > 0 
+                ? `该主题下尚有 ${record.defaultTileCount + record.customTileCount} 个地块和 ${record.rentLevelCount} 个经济等级，删除后它们将失去分类。` 
+                : undefined
+            }
             onConfirm={() => handleDelete(record.id)}
             okText="确定"
             cancelText="取消"

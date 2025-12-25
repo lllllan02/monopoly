@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { 
   Table, Button, Modal, Form, Input, InputNumber, 
   Space, message, Popconfirm, Divider, Select, Tag, 
@@ -23,6 +24,7 @@ const { Option } = Select;
 const { Text, Title, Paragraph } = Typography;
 
 const EconomicManager: React.FC = () => {
+  const location = useLocation();
   const [levels, setLevels] = useState<RentLevel[]>([]);
   const [themes, setThemes] = useState<Theme[]>([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -40,7 +42,10 @@ const EconomicManager: React.FC = () => {
       setLevels(Array.isArray(levelsData) ? levelsData : []);
       setThemes(Array.isArray(themesData) ? themesData : []);
       
-      if (Array.isArray(themesData) && themesData.length > 0 && !activeThemeId) {
+      const state = location.state as { themeId?: string };
+      if (state?.themeId) {
+        setActiveThemeId(state.themeId);
+      } else if (Array.isArray(themesData) && themesData.length > 0 && !activeThemeId) {
         setActiveThemeId(themesData[0].id);
       }
     } catch (error) {

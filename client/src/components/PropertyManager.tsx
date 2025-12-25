@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { 
   Table, Button, Modal, Form, Input, InputNumber, 
   Space, message, Tag, Select, Tooltip, Row, Col, Typography, Tabs, Popconfirm, Card, Divider, Alert
@@ -21,12 +22,14 @@ const { TextArea } = Input;
 const { Text, Title, Paragraph } = Typography;
 
 const PropertyManager: React.FC = () => {
+  const location = useLocation();
   const [properties, setProperties] = useState<Property[]>([]);
   const [themes, setThemes] = useState<Theme[]>([]);
   const [rentLevels, setRentLevels] = useState<RentLevel[]>([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
   const [activeThemeId, setActiveThemeId] = useState<string>('');
+  const [activeSubTab, setActiveSubTab] = useState<string>('default');
   const [form] = Form.useForm();
 
   const fetchData = async () => {
@@ -40,7 +43,12 @@ const PropertyManager: React.FC = () => {
       setThemes(Array.isArray(themesData) ? themesData : []);
       setRentLevels(Array.isArray(levelsData) ? levelsData : []);
       
-      if (Array.isArray(themesData) && themesData.length > 0 && !activeThemeId) {
+      // 优先从路由状态中获取初始主题和子页签
+      const state = location.state as { themeId?: string, tab?: string };
+      if (state?.themeId) {
+        setActiveThemeId(state.themeId);
+        if (state.tab) setActiveSubTab(state.tab);
+      } else if (Array.isArray(themesData) && themesData.length > 0 && !activeThemeId) {
         setActiveThemeId(themesData[0].id);
       }
     } catch (error) {
@@ -315,7 +323,8 @@ const PropertyManager: React.FC = () => {
               children: (
                 <div style={{ padding: '8px 0 40px 0' }}>
                   <Tabs
-                    defaultActiveKey="default"
+                    activeKey={activeSubTab}
+                    onChange={setActiveSubTab}
                     type="card"
                     items={[
                       {
