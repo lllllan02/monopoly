@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { 
   Table, Button, Modal, Form, Input, InputNumber, 
-  Space, message, Tag, Select, Tooltip, Row, Col, Typography, Tabs, Popconfirm, Card, Divider
+  Space, message, Tag, Select, Tooltip, Row, Col, Typography, Tabs, Popconfirm, Card, Divider, Alert
 } from 'antd';
 import { 
   BankOutlined, 
@@ -313,45 +313,71 @@ const PropertyManager: React.FC = () => {
                 </Space>
               ),
               children: (
-                <div style={{ padding: '24px 0 40px 0' }}>
-                  <div style={{ marginBottom: 32 }}>
-                    <Space size={8} style={{ marginBottom: 16 }}>
-                      <div style={{ width: 4, height: 16, background: '#722ed1', borderRadius: 2 }} />
-                      <Text strong style={{ fontSize: '15px' }}>系统内置地块</Text>
-                      <Tooltip title="这些地块是主题的核心组成部分，不可删除或克隆，但可以编辑其背景描述。">
-                        <InfoCircleOutlined style={{ color: '#bfbfbf', fontSize: '13px' }} />
-                      </Tooltip>
-                    </Space>
-                    <Table 
-                      columns={columns} 
-                      dataSource={(properties || []).filter(p => p && p.themeId === t.id && p.isDefault)} 
-                      rowKey="id" 
-                      bordered={false} 
-                      pagination={false}
-                      size="middle"
-                      style={{ width: '100%' }}
-                    />
-                  </div>
-
-                  <div>
-                    <Space size={8} style={{ marginBottom: 16 }}>
-                      <div style={{ width: 4, height: 16, background: '#1890ff', borderRadius: 2 }} />
-                      <Text strong style={{ fontSize: '15px' }}>自定义扩展地块</Text>
-                      <Tooltip title="您可以根据需要自由添加、修改或删除这些地块。">
-                        <InfoCircleOutlined style={{ color: '#bfbfbf', fontSize: '13px' }} />
-                      </Tooltip>
-                    </Space>
-                    <Table 
-                      columns={columns} 
-                      dataSource={(properties || []).filter(p => p && p.themeId === t.id && !p.isDefault)} 
-                      rowKey="id" 
-                      bordered={false} 
-                      pagination={{ pageSize: 10, showSizeChanger: false }} 
-                      size="middle"
-                      style={{ width: '100%' }}
-                      locale={{ emptyText: '暂无自定义地块，点击上方“创建新地块”开始添加。' }}
-                    />
-                  </div>
+                <div style={{ padding: '8px 0 40px 0' }}>
+                  <Tabs
+                    defaultActiveKey="default"
+                    type="card"
+                    items={[
+                      {
+                        key: 'default',
+                        label: (
+                          <Space>
+                            <BankOutlined />
+                            <span>系统内置地块</span>
+                            <Tag style={{ borderRadius: '10px', marginInlineEnd: 0 }}>
+                              {(properties || []).filter(p => p && p.themeId === t.id && p.isDefault).length}
+                            </Tag>
+                          </Space>
+                        ),
+                        children: (
+                          <div style={{ padding: '16px 0' }}>
+                            <Alert
+                              message="内置地块说明"
+                              description="这些地块是主题的核心组成部分，不可删除或克隆。您可以编辑它们的名称和描述，但类型和归属已被锁定。"
+                              type="info"
+                              showIcon
+                              style={{ marginBottom: 20, borderRadius: '8px' }}
+                            />
+                            <Table 
+                              columns={columns} 
+                              dataSource={(properties || []).filter(p => p && p.themeId === t.id && p.isDefault)} 
+                              rowKey="id" 
+                              bordered={false} 
+                              pagination={false}
+                              size="middle"
+                              style={{ width: '100%' }}
+                            />
+                          </div>
+                        )
+                      },
+                      {
+                        key: 'custom',
+                        label: (
+                          <Space>
+                            <BuildOutlined />
+                            <span>自定义扩展地块</span>
+                            <Tag color="blue" style={{ borderRadius: '10px', marginInlineEnd: 0 }}>
+                              {(properties || []).filter(p => p && p.themeId === t.id && !p.isDefault).length}
+                            </Tag>
+                          </Space>
+                        ),
+                        children: (
+                          <div style={{ padding: '16px 0' }}>
+                            <Table 
+                              columns={columns} 
+                              dataSource={(properties || []).filter(p => p && p.themeId === t.id && !p.isDefault)} 
+                              rowKey="id" 
+                              bordered={false} 
+                              pagination={{ pageSize: 10, showSizeChanger: false }} 
+                              size="middle"
+                              style={{ width: '100%' }}
+                              locale={{ emptyText: '暂无自定义地块，点击上方“创建新地块”开始添加。' }}
+                            />
+                          </div>
+                        )
+                      }
+                    ]}
+                  />
                 </div>
               )
             }))}
