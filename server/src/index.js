@@ -177,11 +177,36 @@ app.get('/api/maps', (req, res) => res.json(dbMaps.data.maps));
 app.post('/api/maps', async (req, res) => {
   const newMap = {
     id: generateId('map'),
-    ...req.body
+    name: req.body.name || '未命名地图',
+    themeId: req.body.themeId,
+    size: req.body.size || 40,
+    slots: req.body.slots || []
   };
   dbMaps.data.maps.push(newMap);
   await dbMaps.write();
   res.status(201).json(newMap);
+});
+
+app.put('/api/maps/:id', async (req, res) => {
+  const { id } = req.params;
+  const index = dbMaps.data.maps.findIndex(m => m.id === id);
+  if (index !== -1) {
+    dbMaps.data.maps[index] = { 
+      ...dbMaps.data.maps[index], 
+      ...req.body 
+    };
+    await dbMaps.write();
+    res.json(dbMaps.data.maps[index]);
+  } else {
+    res.status(404).send('Not found');
+  }
+});
+
+app.delete('/api/maps/:id', async (req, res) => {
+  const { id } = req.params;
+  dbMaps.data.maps = dbMaps.data.maps.filter(m => m.id !== id);
+  await dbMaps.write();
+  res.status(204).send();
 });
 
 // --- 卡片 API ---
