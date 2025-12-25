@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   Table, Button, Modal, Form, Input, InputNumber, 
   Space, Tag, Select, Typography, 
@@ -29,7 +30,8 @@ const { Text, Title, Paragraph } = Typography;
 const GRID_SIZE = 80;
 
 const MapManager: React.FC = () => {
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [maps, setMaps] = useState<Map[]>([]);
   const [themes, setThemes] = useState<Theme[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
@@ -47,21 +49,31 @@ const MapManager: React.FC = () => {
   const [libraryFilter, setLibraryFilter] = useState<'builtin' | 'custom'>('builtin');
   const [secondaryFilter, setSecondaryFilter] = useState<string>('all');
 
-  // 辅助函数：更新地图并记录历史
-  const updateMapWithHistory = (newMap: Map) => {
-    if (currentMap) {
-      setHistory(prev => [...prev, JSON.parse(JSON.stringify(currentMap))].slice(-20)); // 最多记录20步
-    }
-    setCurrentMap(newMap);
-  };
+  // 未保存变更警告逻辑
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (history.length > 0) {
+        e.preventDefault();
+        e.returnValue = ''; // 现代浏览器需要设置这个值来触发警告
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [history.length]);
 
-  const handleUndo = () => {
-    if (history.length > 0) {
-      const prevMap = history[history.length - 1];
-      setHistory(prev => prev.slice(0, -1));
-      setCurrentMap(prevMap);
+  // 刷新后停留逻辑：根据 URL 参数恢复编辑器状态 (仅在初次加载或手动输入 URL 时触发)
+  useEffect(() => {
+    const editingMapId = searchParams.get('editor');
+    // 如果有 ID 且当前没打开编辑器，则尝试打开
+    if (editingMapId && maps.length > 0 && !isEditorOpen && !currentMap) {
+      const targetMap = maps.find(m => m.id === editingMapId);
+      if (targetMap) {
+        setCurrentMap(JSON.parse(JSON.stringify(targetMap)));
+        setIsEditorOpen(true);
+        setHistory([]);
+      }
     }
-  };
+  }, [maps]); // 仅在地图数据加载完成后校验一次
 
   const fetchData = async () => {
     try {
@@ -71,7 +83,8 @@ const MapManager: React.FC = () => {
         PropertyService.getAll().catch(() => []),
         RentLevelService.getAll().catch(() => [])
       ]);
-      setMaps(Array.isArray(mapsData) ? mapsData : []);
+      const fetchedMaps = Array.isArray(mapsData) ? mapsData : [];
+      setMaps(fetchedMaps);
       setThemes(Array.isArray(themesData) ? themesData : []);
       setProperties(Array.isArray(propsData) ? propsData : []);
       setRentLevels(Array.isArray(rentLevelsData) ? rentLevelsData : []);
@@ -117,6 +130,44 @@ const MapManager: React.FC = () => {
     setCurrentMap(JSON.parse(JSON.stringify(map))); // 深拷贝防止直接修改
     setHistory([]); // 清空历史记录
     setIsEditorOpen(true);
+    setSearchParams({ editor: map.id }); // 更新 URL，支持刷新恢复
+  };
+
+  const handleCloseEditor = useCallback(() => {
+    const cleanup = () => {
+      setSearchParams({}, { replace: true });
+      setIsEditorOpen(false);
+      setCurrentMap(null);
+      setHistory([]);
+    };
+
+    if (history.length > 0) {
+      modal.confirm({
+        title: '未保存的变更',
+        content: '您有尚未保存的地块布局变更，确定要离开吗？',
+        okText: '离开',
+        cancelText: '取消',
+        onOk: cleanup
+      });
+    } else {
+      cleanup();
+    }
+  }, [history.length, setSearchParams, modal]);
+
+  // 辅助函数：更新地图并记录历史
+  const updateMapWithHistory = (newMap: Map) => {
+    if (currentMap) {
+      setHistory(prev => [...prev, JSON.parse(JSON.stringify(currentMap))].slice(-20)); // 最多记录20步
+    }
+    setCurrentMap(newMap);
+  };
+
+  const handleUndo = () => {
+    if (history.length > 0) {
+      const prevMap = history[history.length - 1];
+      setHistory(prev => prev.slice(0, -1));
+      setCurrentMap(prevMap);
+    }
   };
 
   // 计算当前地块的边界逻辑
@@ -148,6 +199,7 @@ const MapManager: React.FC = () => {
     try {
       await MapService.update(currentMap.id, currentMap);
       message.success('地图保存成功');
+      setHistory([]); // 保存后清空历史，消除未保存警告
       fetchData();
     } catch (error) {
       message.error('保存失败');
@@ -593,7 +645,7 @@ const MapManager: React.FC = () => {
           <div style={{ padding: '16px 24px', borderBottom: '1px solid #f0f0f0', background: '#fff', zIndex: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Space size={16}>
-              <Button icon={<ArrowLeftOutlined />} onClick={() => setIsEditorOpen(false)}>返回列表</Button>
+              <Button icon={<ArrowLeftOutlined />} onClick={handleCloseEditor}>返回列表</Button>
               <Title level={4} style={{ margin: 0 }}>地图编辑: {currentMap?.name}</Title>
             </Space>
               <Space>
