@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { 
   Table, Button, Modal, Form, Input, InputNumber, 
-  Space, message, Tag, Select, Tooltip, Row, Col, Typography, Tabs, Popconfirm, Divider, Alert
+  Space, message, Tag, Select, Tooltip, Row, Col, Typography, Tabs, Popconfirm, Divider, Alert, Segmented
 } from 'antd';
 import { 
   BankOutlined, 
@@ -29,6 +29,7 @@ const PropertyManager: React.FC = () => {
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
   const [activeThemeId, setActiveThemeId] = useState<string>('');
   const [activeSubTab, setActiveSubTab] = useState<string>('default');
+  const [filterLevelId, setFilterLevelId] = useState<string>('all');
   const [form] = Form.useForm();
 
   const fetchData = async () => {
@@ -66,6 +67,10 @@ const PropertyManager: React.FC = () => {
   const filteredRentLevels = useMemo(() => {
     return (rentLevels || []).filter(l => l && l.themeId === currentThemeId);
   }, [rentLevels, currentThemeId]);
+
+  useEffect(() => {
+    setFilterLevelId('all');
+  }, [activeThemeId]);
 
   const handleAdd = () => {
     setEditingProperty(null);
@@ -371,15 +376,39 @@ const PropertyManager: React.FC = () => {
                         ),
                         children: (
                           <div style={{ padding: '16px 0' }}>
+                            <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 16 }}>
+                              <span style={{ fontSize: '13px', color: '#8c8c8c' }}>收益等级筛选:</span>
+                              <Segmented
+                                value={filterLevelId}
+                                onChange={(val) => setFilterLevelId(val as string)}
+                                options={[
+                                  { label: '全部地块', value: 'all' },
+                                  ...(rentLevels || [])
+                                    .filter(l => l && l.themeId === t.id)
+                                    .map(l => ({
+                                      label: (
+                                        <Space size={4}>
+                                          <div style={{ width: 6, height: 6, borderRadius: '50%', background: l.color }} />
+                                          <span>{l.name}</span>
+                                        </Space>
+                                      ),
+                                      value: l.id
+                                    }))
+                                ]}
+                              />
+                            </div>
                             <Table 
                               columns={columns} 
-                              dataSource={(properties || []).filter(p => p && p.themeId === t.id && !p.isDefault)} 
+                              dataSource={(properties || [])
+                                .filter(p => p && p.themeId === t.id && !p.isDefault)
+                                .filter(p => filterLevelId === 'all' || p.rentLevelId === filterLevelId)
+                              } 
                               rowKey="id" 
                               bordered={false} 
                               pagination={{ pageSize: 10, showSizeChanger: false }} 
                               size="middle"
                               style={{ width: '100%' }}
-                              locale={{ emptyText: '暂无自定义地块，点击上方“创建新地块”开始添加。' }}
+                              locale={{ emptyText: '暂无符合条件的自定义地块。' }}
                             />
                           </div>
                         )
