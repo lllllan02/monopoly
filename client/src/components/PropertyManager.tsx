@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { 
   Table, Button, Modal, Form, Input, InputNumber, 
-  Space, message, Tag, Select, Tooltip, Row, Col, Typography, Tabs, Popconfirm, Divider, Alert, Segmented
+  Space, Tag, Select, Tooltip, Row, Col, Typography, Tabs, Popconfirm, Divider, Alert, Segmented, App
 } from 'antd';
 import { 
   BankOutlined, 
@@ -21,6 +21,7 @@ const { TextArea } = Input;
 const { Text } = Typography;
 
 const PropertyManager: React.FC = () => {
+  const { message } = App.useApp();
   const location = useLocation();
   const [properties, setProperties] = useState<Property[]>([]);
   const [themes, setThemes] = useState<Theme[]>([]);

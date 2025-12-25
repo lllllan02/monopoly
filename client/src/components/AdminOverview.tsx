@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Row, Col, Statistic, Typography, Space, List, Tag, message } from 'antd';
+import { Card, Row, Col, Statistic, Typography, Space, List, Tag, App } from 'antd';
 import { 
   BankOutlined, 
   EnvironmentOutlined, 
@@ -13,6 +13,7 @@ import { MapService } from '../services/MapService';
 const { Title, Paragraph, Text } = Typography;
 
 const AdminOverview: React.FC = () => {
+  const { message } = App.useApp();
   const [stats, setStats] = useState({
     properties: 0,
     maps: 0,

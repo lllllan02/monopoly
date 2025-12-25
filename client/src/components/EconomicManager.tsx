@@ -2,8 +2,8 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { 
   Table, Button, Modal, Form, Input, InputNumber, 
-  Space, message, Popconfirm, Divider, Select, Tag, 
-  Row, Col, Typography, Tabs, Card, Tooltip, Switch
+  Space, Popconfirm, Divider, Select, Tag, 
+  Row, Col, Typography, Tabs, Card, Tooltip, Switch, App
 } from 'antd';
 import { 
   PercentageOutlined, 
@@ -24,6 +24,7 @@ const { Option } = Select;
 const { Text, Title, Paragraph } = Typography;
 
 const EconomicManager: React.FC = () => {
+  const { message } = App.useApp();
   const location = useLocation();
   const [levels, setLevels] = useState<RentLevel[]>([]);
   const [themes, setThemes] = useState<Theme[]>([]);

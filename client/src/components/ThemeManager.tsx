@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Button, Modal, Form, Input, Space, message, Popconfirm, Typography } from 'antd';
-import { RocketOutlined, BankOutlined, EnvironmentOutlined, PlusOutlined, BuildOutlined, PercentageOutlined } from '@ant-design/icons';
+import { Table, Button, Modal, Form, Input, Space, Popconfirm, Typography, App } from 'antd';
+import { 
+  RocketOutlined, BankOutlined, EnvironmentOutlined, 
+  PlusOutlined, BuildOutlined, PercentageOutlined,
+  IdcardOutlined
+} from '@ant-design/icons';
 import { type Theme, ThemeService } from '../services/ThemeService';
 import { PropertyService, type Property } from '../services/PropertyService';
 import { MapService } from '../services/MapService';
@@ -18,6 +22,7 @@ interface ThemeWithStats extends Theme {
 }
 
 const ThemeManager: React.FC = () => {
+  const { message } = App.useApp();
   const navigate = useNavigate();
   const [themes, setThemes] = useState<ThemeWithStats[]>([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -115,6 +120,7 @@ const ThemeManager: React.FC = () => {
       title: '主题名称', 
       dataIndex: 'name', 
       key: 'name',
+      width: 250,
       render: (text: string, record: ThemeWithStats) => (
         <Space direction="vertical" size={2} style={{ paddingLeft: 16 }}>
           <Typography.Text strong style={{ fontSize: '16px' }}>{text}</Typography.Text>
@@ -127,56 +133,71 @@ const ThemeManager: React.FC = () => {
     {
       title: '关联内容统计',
       key: 'stats',
-      width: 450,
+      width: 650,
       render: (_: any, record: ThemeWithStats) => (
-        <Space size={20} style={{ fontSize: '13px' }}>
+        <Space size={24} style={{ fontSize: '13px' }}>
+          {/* 1. 经济体系 */}
           <Space 
-            size={4} 
-            className="clickable-stat"
-            onClick={() => navigate('/admin/properties', { state: { themeId: record.id, tab: 'default' } })}
-          >
-            <BankOutlined style={{ color: '#722ed1', opacity: 0.6 }} /> 
-            <span style={{ color: '#8c8c8c' }}>内置:</span>
-            <Typography.Text strong style={{ color: '#722ed1' }}>{record.defaultTileCount}</Typography.Text>
-          </Space>
-          <Space 
-            size={4} 
-            className="clickable-stat"
-            onClick={() => navigate('/admin/properties', { state: { themeId: record.id, tab: 'custom' } })}
-          >
-            <BuildOutlined style={{ color: '#1890ff', opacity: 0.6 }} /> 
-            <span style={{ color: '#8c8c8c' }}>自定义:</span>
-            <Typography.Text strong style={{ color: '#1890ff' }}>{record.customTileCount}</Typography.Text>
-          </Space>
-          <Space size={4}>
-            <Typography.Text style={{ opacity: 0.2 }}>|</Typography.Text>
-          </Space>
-          <Space 
-            size={4} 
+            size={6} 
             className="clickable-stat"
             onClick={() => navigate('/admin/rent-levels', { state: { themeId: record.id } })}
           >
             <PercentageOutlined style={{ color: '#fa8c16', opacity: 0.6 }} /> 
-            <span style={{ color: '#8c8c8c' }}>经济等级:</span>
+            <span style={{ color: '#8c8c8c' }}>经济体系:</span>
             <Typography.Text strong style={{ color: '#fa8c16' }}>{record.rentLevelCount}</Typography.Text>
           </Space>
-          <Space 
-            size={4} 
-            className="clickable-stat"
-            onClick={() => navigate('/admin/maps', { state: { themeId: record.id } })}
-          >
-            <EnvironmentOutlined style={{ color: '#52c41a', opacity: 0.6 }} /> 
-            <span style={{ color: '#8c8c8c' }}>地图:</span>
-            <Typography.Text strong style={{ color: '#52c41a' }}>{record.mapCount}</Typography.Text>
+
+          {/* 分隔符 */}
+          <Space size={4}><Typography.Text style={{ opacity: 0.1 }}>|</Typography.Text></Space>
+
+          {/* 2. 地块管理 (内置 + 自定义) */}
+          <Space size={16}>
+            <Space 
+              size={6} 
+              className="clickable-stat"
+              onClick={() => navigate('/admin/properties', { state: { themeId: record.id, tab: 'default' } })}
+            >
+              <BankOutlined style={{ color: '#722ed1', opacity: 0.6 }} /> 
+              <span style={{ color: '#8c8c8c' }}>内置地块:</span>
+              <Typography.Text strong style={{ color: '#722ed1' }}>{record.defaultTileCount}</Typography.Text>
+            </Space>
+            <Space 
+              size={6} 
+              className="clickable-stat"
+              onClick={() => navigate('/admin/properties', { state: { themeId: record.id, tab: 'custom' } })}
+            >
+              <BuildOutlined style={{ color: '#1890ff', opacity: 0.6 }} /> 
+              <span style={{ color: '#8c8c8c' }}>自定义:</span>
+              <Typography.Text strong style={{ color: '#1890ff' }}>{record.customTileCount}</Typography.Text>
+            </Space>
           </Space>
+
+          {/* 分隔符 */}
+          <Space size={4}><Typography.Text style={{ opacity: 0.1 }}>|</Typography.Text></Space>
+
+          {/* 3. 卡组管理 */}
           <Space 
-            size={4} 
+            size={6} 
             className="clickable-stat"
             onClick={() => navigate('/admin/cards', { state: { themeId: record.id } })}
           >
             <IdcardOutlined style={{ color: '#eb2f96', opacity: 0.6 }} /> 
-            <span style={{ color: '#8c8c8c' }}>卡片:</span>
+            <span style={{ color: '#8c8c8c' }}>卡组管理:</span>
             <Typography.Text strong style={{ color: '#eb2f96' }}>{record.cardCount}</Typography.Text>
+          </Space>
+
+          {/* 分隔符 */}
+          <Space size={4}><Typography.Text style={{ opacity: 0.1 }}>|</Typography.Text></Space>
+
+          {/* 4. 地图设计 */}
+          <Space 
+            size={6} 
+            className="clickable-stat"
+            onClick={() => navigate('/admin/maps', { state: { themeId: record.id } })}
+          >
+            <EnvironmentOutlined style={{ color: '#52c41a', opacity: 0.6 }} /> 
+            <span style={{ color: '#8c8c8c' }}>地图设计:</span>
+            <Typography.Text strong style={{ color: '#52c41a' }}>{record.mapCount}</Typography.Text>
           </Space>
         </Space>
       )
@@ -184,7 +205,7 @@ const ThemeManager: React.FC = () => {
     {
       title: '操作',
       key: 'action',
-      width: 160,
+      width: 180,
       align: 'right' as const,
       render: (_: any, record: ThemeWithStats) => (
         <Space size="middle">

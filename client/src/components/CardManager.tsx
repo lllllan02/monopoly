@@ -2,8 +2,8 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { 
   Table, Button, Modal, Form, Input, 
-  Space, message, Tag, Select, Typography, 
-  Popconfirm, Row, Col, Divider, InputNumber, Tabs, Tooltip, Segmented
+  Space, Tag, Select, Typography, 
+  Popconfirm, Row, Col, Divider, InputNumber, Tabs, Tooltip, Segmented, App
 } from 'antd';
 import { 
   IdcardOutlined, 
@@ -21,6 +21,7 @@ const { TextArea } = Input;
 const { Text } = Typography;
 
 const CardManager: React.FC = () => {
+  const { message } = App.useApp();
   const location = useLocation();
   const [cards, setCards] = useState<Card[]>([]);
   const [themes, setThemes] = useState<Theme[]>([]);
