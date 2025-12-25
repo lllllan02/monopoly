@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { 
   Table, Button, Modal, Form, Input, InputNumber, 
-  Space, message, Tag, Select, Typography, 
-  Popconfirm, Tabs, Layout 
+  Space, Tag, Select, Typography, 
+  Popconfirm, Tabs, Layout, App
 } from 'antd';
 import { 
   EnvironmentOutlined, 
@@ -13,7 +13,8 @@ import {
   RocketOutlined,
   SaveOutlined,
   ArrowLeftOutlined,
-  DragOutlined
+  DragOutlined,
+  UndoOutlined
 } from '@ant-design/icons';
 import { type Map, MapService } from '../services/MapService';
 import { type Theme, ThemeService } from '../services/ThemeService';
@@ -22,7 +23,11 @@ import { type Property, PropertyService } from '../services/PropertyService';
 const { Content, Sider } = Layout;
 const { Text, Title, Paragraph } = Typography;
 
+const GRID_SIZE = 80;
+const CANVAS_SIZE = 2400;
+
 const MapManager: React.FC = () => {
+  const { message } = App.useApp();
   const [maps, setMaps] = useState<Map[]>([]);
   const [themes, setThemes] = useState<Theme[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
@@ -34,6 +39,25 @@ const MapManager: React.FC = () => {
   // 编辑器状态
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [currentMap, setCurrentMap] = useState<Map | null>(null);
+  const [history, setHistory] = useState<Map[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [draggingSlotIndex, setDraggingSlotIndex] = useState<number | null>(null);
+
+  // 辅助函数：更新地图并记录历史
+  const updateMapWithHistory = (newMap: Map) => {
+    if (currentMap) {
+      setHistory(prev => [...prev, JSON.parse(JSON.stringify(currentMap))].slice(-20)); // 最多记录20步
+    }
+    setCurrentMap(newMap);
+  };
+
+  const handleUndo = () => {
+    if (history.length > 0) {
+      const prevMap = history[history.length - 1];
+      setHistory(prev => prev.slice(0, -1));
+      setCurrentMap(prevMap);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -72,9 +96,8 @@ const MapManager: React.FC = () => {
         await MapService.update(editingMap.id, values);
         message.success('修改成功');
       } else {
-        // 创建新地图时初始化空槽位
-        const slots = Array.from({ length: values.size }, () => ({ type: 'empty' }));
-        await MapService.create({ ...values, slots });
+        // 创建新地图时初始化为空列表，由编辑器添加
+        await MapService.create({ ...values, slots: [] });
         message.success('创建成功');
       }
       setIsModalVisible(false);
@@ -86,18 +109,21 @@ const MapManager: React.FC = () => {
 
   const handleOpenEditor = (map: Map) => {
     setCurrentMap(JSON.parse(JSON.stringify(map))); // 深拷贝防止直接修改
+    setHistory([]); // 清空历史记录
     setIsEditorOpen(true);
   };
 
   const handleSaveEditor = async () => {
     if (!currentMap) return;
+    setIsSaving(true);
     try {
       await MapService.update(currentMap.id, currentMap);
       message.success('地图保存成功');
-      setIsEditorOpen(false);
       fetchData();
     } catch (error) {
       message.error('保存失败');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -123,8 +149,12 @@ const MapManager: React.FC = () => {
               key={slot.type}
               draggable
               onDragStart={(e) => {
+                const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                e.dataTransfer.setData('offsetX', (GRID_SIZE / 2).toString());
+                e.dataTransfer.setData('offsetY', (GRID_SIZE / 2).toString());
                 e.dataTransfer.setData('slotType', slot.type);
                 e.dataTransfer.setData('slotName', slot.name);
+                e.dataTransfer.setData('sourceIndex', '');
               }}
               style={{
                 padding: '6px 10px',
@@ -150,8 +180,12 @@ const MapManager: React.FC = () => {
               key={prop.id}
               draggable
               onDragStart={(e) => {
+                const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                e.dataTransfer.setData('offsetX', (GRID_SIZE / 2).toString());
+                e.dataTransfer.setData('offsetY', (GRID_SIZE / 2).toString());
                 e.dataTransfer.setData('propertyId', prop.id);
                 e.dataTransfer.setData('slotType', 'property');
+                e.dataTransfer.setData('sourceIndex', '');
               }}
               style={{
                 padding: '10px 12px',
@@ -178,34 +212,58 @@ const MapManager: React.FC = () => {
   };
 
   // 渲染地图插槽
-  const handleDrop = (index: number, e: React.DragEvent) => {
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const container = e.currentTarget as HTMLDivElement;
+    const rect = container.getBoundingClientRect();
+    
+    // 获取拖拽起始时的偏移量（鼠标点击位置相对于地块左上角的距离）
+    const offsetX = parseInt(e.dataTransfer.getData('offsetX') || '0');
+    const offsetY = parseInt(e.dataTransfer.getData('offsetY') || '0');
+
+    // 计算放置位置：(鼠标当前坐标 - 容器左上角坐标 - 内部偏移量)
+    const rawX = e.clientX - rect.left - offsetX;
+    const rawY = e.clientY - rect.top - offsetY;
+
+    // 吸附到网格
+    const x = Math.round(rawX / GRID_SIZE) * GRID_SIZE;
+    const y = Math.round(rawY / GRID_SIZE) * GRID_SIZE;
+
     const slotType = e.dataTransfer.getData('slotType');
     const propId = e.dataTransfer.getData('propertyId');
     const slotName = e.dataTransfer.getData('slotName');
+    const sourceIndex = e.dataTransfer.getData('sourceIndex');
     
     if (currentMap) {
-      const newSlots = [...currentMap.slots];
-      if (slotType === 'property' && propId) {
-        const prop = properties.find(p => p.id === propId);
-        if (prop) {
-          newSlots[index] = {
-            type: 'property',
-            propertyId: prop.id,
-            name: prop.name
-          };
+      let newSlots = [...currentMap.slots];
+      
+      if (sourceIndex !== '') {
+        // 移动已有地块
+        const idx = parseInt(sourceIndex);
+        newSlots[idx] = { ...newSlots[idx], x, y };
+      } else {
+        // 新增地块
+        let newSlot: any = { x, y, type: slotType };
+        if (slotType === 'property' && propId) {
+          const prop = properties.find(p => p.id === propId);
+          if (prop) {
+            newSlot = { ...newSlot, propertyId: prop.id, name: prop.name };
+          }
+        } else {
+          newSlot.name = slotName;
         }
-      } else if (slotType) {
-        newSlots[index] = {
-          type: slotType as any,
-          name: slotName
-        };
+        // 过滤掉原本可能存在的 empty 占位符
+        newSlots = newSlots.filter(s => s.type !== 'empty');
+        newSlots.push(newSlot);
       }
-      setCurrentMap({ ...currentMap, slots: newSlots });
+      
+      updateMapWithHistory({ ...currentMap, slots: newSlots });
     }
   };
 
   const renderSlot = (index: number) => {
-    const slot = currentMap?.slots[index] || { type: 'empty' };
+    const slot = currentMap?.slots[index];
+    if (!slot || slot.type === 'empty') return null;
     
     const typeConfig: Record<string, { color: string, bg: string }> = {
       empty: { color: '#d9d9d9', bg: '#fafafa' },
@@ -223,57 +281,67 @@ const MapManager: React.FC = () => {
     return (
       <div 
         key={index}
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => handleDrop(index, e)}
+        draggable
+        onDragStart={(e) => {
+          const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+          e.dataTransfer.setData('offsetX', (e.clientX - rect.left).toString());
+          e.dataTransfer.setData('offsetY', (e.clientY - rect.top).toString());
+          e.dataTransfer.setData('sourceIndex', index.toString());
+          e.dataTransfer.setData('slotType', slot.type);
+        }}
         style={{
-          width: '100px',
-          height: '100px',
-          border: `1px ${slot.type === 'empty' ? 'dashed' : 'solid'} ${config.color}`,
-          borderRadius: '8px',
+          width: GRID_SIZE - 4,
+          height: GRID_SIZE - 4,
+          border: `1px solid ${config.color}`,
+          borderRadius: '4px',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
           background: config.bg,
-          position: 'relative',
-          padding: 8,
+          position: 'absolute',
+          left: (slot.x || 0) + 2,
+          top: (slot.y || 0) + 2,
+          padding: 6,
           textAlign: 'center',
-          transition: 'all 0.2s'
+          transition: 'box-shadow 0.2s',
+          cursor: 'move',
+          zIndex: 10,
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
         }}
       >
-        <div style={{ fontSize: '10px', color: '#bfbfbf', position: 'absolute', top: 4, left: 4 }}>#{index + 1}</div>
-        {slot.type === 'empty' ? (
-          <Text type="secondary" style={{ fontSize: '11px', opacity: 0.5 }}>拖入</Text>
-        ) : (
-          <>
-            <div style={{ 
-              fontSize: '12px', 
-              fontWeight: 600, 
-              color: '#1a1a1a', 
-              marginBottom: 4,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              width: '100%'
-            }}>
-              {slot.name}
-            </div>
-            <div style={{ fontSize: '9px', color: config.color, textTransform: 'uppercase', fontWeight: 'bold' }}>
-              {slot.type}
-            </div>
-            <Button 
-              type="text" 
-              size="small" 
-              icon={<DeleteOutlined style={{ fontSize: '10px' }} />} 
-              style={{ position: 'absolute', top: 2, right: 2, height: '20px', width: '20px' }}
-              onClick={() => {
-                const newSlots = [...(currentMap?.slots || [])];
-                newSlots[index] = { type: 'empty' };
-                setCurrentMap({ ...currentMap!, slots: newSlots });
-              }}
-            />
-          </>
-        )}
+        <div style={{ fontSize: '9px', color: '#bfbfbf', position: 'absolute', top: 2, left: 3 }}>#{index + 1}</div>
+        <div style={{ 
+          fontSize: '11px', 
+          fontWeight: 600, 
+          color: '#1a1a1a', 
+          lineHeight: '1.2',
+          marginBottom: 2,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          width: '100%'
+        }}>
+          {slot.name}
+        </div>
+        <div style={{ fontSize: '8px', color: config.color, textTransform: 'uppercase', fontWeight: 'bold' }}>
+          {slot.type}
+        </div>
+        <Button 
+          type="text" 
+          size="small" 
+          danger
+          icon={<DeleteOutlined style={{ fontSize: '10px' }} />} 
+          style={{ position: 'absolute', top: -8, right: -8, height: '20px', width: '20px', minWidth: '20px', background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.1)', borderRadius: '50%', padding: 0 }}
+          onClick={(e) => {
+            e.stopPropagation();
+            const newSlots = [...(currentMap?.slots || [])];
+            newSlots.splice(index, 1);
+            updateMapWithHistory({ ...currentMap!, slots: newSlots });
+          }}
+        />
       </div>
     );
   };
@@ -284,25 +352,61 @@ const MapManager: React.FC = () => {
         <Sider width={280} theme="light" style={{ borderRight: '1px solid #f0f0f0', overflow: 'auto' }}>
           {renderLibrary()}
         </Sider>
-        <Content style={{ padding: '24px', overflow: 'auto' }}>
-          <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Space size={16}>
-              <Button icon={<ArrowLeftOutlined />} onClick={() => setIsEditorOpen(false)}>返回列表</Button>
-              <Title level={4} style={{ margin: 0 }}>地图编辑: {currentMap?.name}</Title>
-            </Space>
-            <Button type="primary" icon={<SaveOutlined />} onClick={handleSaveEditor}>保存地图布局</Button>
+        <Content style={{ position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '16px 24px', borderBottom: '1px solid #f0f0f0', background: '#fff', zIndex: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Space size={16}>
+                <Button icon={<ArrowLeftOutlined />} onClick={() => setIsEditorOpen(false)}>返回列表</Button>
+                <Title level={4} style={{ margin: 0 }}>地图编辑: {currentMap?.name}</Title>
+              </Space>
+              <Space>
+                <Text type="secondary">提示: 拖拽左侧地块到网格中，可自由移动地块</Text>
+                <Button 
+                  icon={<UndoOutlined />} 
+                  onClick={handleUndo} 
+                  disabled={history.length === 0}
+                >
+                  撤销
+                </Button>
+                <Button 
+                  type="primary" 
+                  icon={<SaveOutlined />} 
+                  onClick={handleSaveEditor}
+                  loading={isSaving}
+                >
+                  保存地图布局
+                </Button>
+              </Space>
+            </div>
           </div>
           
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fill, 100px)', 
-            gap: '12px',
-            background: '#fafafa',
-            padding: '24px',
-            borderRadius: '12px',
-            minHeight: '400px'
-          }}>
-            {Array.from({ length: currentMap?.size || 40 }).map((_, i) => renderSlot(i))}
+          <div 
+            style={{ 
+              flex: 1,
+              overflow: 'auto',
+              padding: '100px', // 给予四周足够的空间
+              background: '#f0f2f5'
+            }}
+          >
+            <div 
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={handleDrop}
+              style={{ 
+                width: CANVAS_SIZE,
+                height: CANVAS_SIZE,
+                background: '#fff',
+                position: 'relative',
+                boxShadow: '0 0 20px rgba(0,0,0,0.05)',
+                backgroundImage: `
+                  linear-gradient(to right, #f0f0f0 1px, transparent 1px),
+                  linear-gradient(to bottom, #f0f0f0 1px, transparent 1px)
+                `,
+                backgroundSize: `${GRID_SIZE}px ${GRID_SIZE}px`,
+                border: '1px solid #d9d9d9'
+              }}
+            >
+              {currentMap?.slots.map((_, i) => renderSlot(i))}
+            </div>
           </div>
         </Content>
       </Layout>
@@ -322,10 +426,9 @@ const MapManager: React.FC = () => {
       )
     },
     { 
-      title: '棋盘规模', 
-      dataIndex: 'size', 
-      key: 'size',
-      render: (size: number) => <Tag color="blue">{size} 格</Tag>
+      title: '地块数量', 
+      key: 'slotCount',
+      render: (record: Map) => <Tag color="blue">{record.slots?.filter(s => s.type !== 'empty').length || 0} 格</Tag>
     },
     { 
       title: '所属主题', 

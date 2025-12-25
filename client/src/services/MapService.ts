@@ -3,6 +3,8 @@ export interface MapSlot {
   propertyId?: string; // 如果是地块，关联具体的 tile_id
   name?: string; // 显示名称
   value?: number; // 针对税收格等设置固定数值
+  x?: number; // 横坐标
+  y?: number; // 纵坐标
 }
 
 export interface Map {
