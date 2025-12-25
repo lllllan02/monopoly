@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { 
   Table, Button, Modal, Form, Input, InputNumber, 
   Space, Tag, Select, Typography, 
-  Popconfirm, Tabs, Layout, App, Segmented, Divider, Card
+  Popconfirm, Tabs, Layout, App, Segmented
 } from 'antd';
 import { 
   EnvironmentOutlined, 
@@ -309,13 +309,11 @@ const MapManager: React.FC = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {filteredItems.length > 0 ? filteredItems.map((item) => {
               const isProperty = item.category === 'custom';
-              const typeColor = isProperty ? '#1890ff' : '#52c41a';
+              const rentLevel = rentLevels.find(r => r.id === item.detail?.rentLevelId);
               
               return (
-                <Card
+                <div
                   key={`${item.propertyId}`}
-                  size="small"
-                  hoverable
               draggable
               onDragStart={(e) => {
                     e.dataTransfer.setData('offsetX', (GRID_SIZE / 2).toString());
@@ -323,64 +321,59 @@ const MapManager: React.FC = () => {
                     e.dataTransfer.setData('propertyId', item.propertyId);
                     e.dataTransfer.setData('slotType', item.type);
                     e.dataTransfer.setData('sourceIndex', '');
-                  }}
-                  bodyStyle={{ padding: '12px' }}
+              }}
               style={{
                     cursor: 'grab', 
                     border: '1px solid #f0f0f0',
                 background: '#fff',
-                    position: 'relative',
-                    overflow: 'hidden'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                    <div style={{ 
-                      width: '32px', 
-                      height: '32px', 
-                      background: isProperty ? '#e6f7ff' : '#f6ffed',
                 borderRadius: '6px',
+                    padding: '8px 12px',
                 display: 'flex',
                 alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '18px',
-                      color: typeColor,
-                      flexShrink: 0,
-                      border: '1px solid rgba(0,0,0,0.05)',
-                      overflow: 'hidden'
-                    }}>
-                      {(() => {
-                        const iconValue = Array.isArray(item.detail?.icon) ? item.detail?.icon[0] : item.detail?.icon;
-                        const isUrl = iconValue && (iconValue.startsWith('http') || iconValue.startsWith('/') || iconValue.startsWith('data:'));
-                        if (isUrl) return <img src={iconValue} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="logo" />;
-                        return iconValue || <DragOutlined style={{ fontSize: '14px' }} />;
-                      })()}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                        <Text strong style={{ fontSize: '14px' }}>{item.name}</Text>
-                        <Tag color={isProperty ? 'blue' : 'green'} style={{ marginRight: 0, fontSize: '10px' }}>
-                          {isProperty ? '自定义' : '内置'}
-                        </Tag>
-                      </div>
-                      
-                      <div style={{ fontSize: '12px', color: '#8c8c8c' }}>
-                        {isProperty ? (
-                          <Space split={<Divider type="vertical" />} size={4} wrap>
-                            <span>价格: <Text type="warning">¥{item.detail?.price || 0}</Text></span>
-                            {item.detail?.rentLevelId && (
-                              <span>收益: {rentLevels.find(r => r.id === item.detail?.rentLevelId)?.name}</span>
-                            )}
-                          </Space>
-                        ) : (
-                          <span>{item.detail?.description || '基础功能地块'}</span>
-                        )}
-                        <div style={{ marginTop: 4, opacity: 0.8 }}>
-                          类型: {item.type}
+                    gap: '12px',
+                    transition: 'all 0.2s',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.borderColor = '#1890ff'}
+                  onMouseLeave={(e) => e.currentTarget.style.borderColor = '#f0f0f0'}
+                >
+                  <div style={{ 
+                    width: '28px', 
+                    height: '28px', 
+                    background: isProperty ? (rentLevel?.color || '#f5f5f5') : '#f6ffed',
+                    borderRadius: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '16px',
+                    flexShrink: 0,
+                    overflow: 'hidden'
+                  }}>
+                    {(() => {
+                      const iconValue = Array.isArray(item.detail?.icon) ? item.detail?.icon[0] : item.detail?.icon;
+                      const isUrl = iconValue && (iconValue.startsWith('http') || iconValue.startsWith('/') || iconValue.startsWith('data:'));
+                      if (isUrl) return <img src={iconValue} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="logo" />;
+                      return iconValue || <DragOutlined style={{ fontSize: '12px', color: '#bfbfbf' }} />;
+                    })()}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text strong style={{ fontSize: '13px' }}>{item.name}</Text>
+                      {isProperty && rentLevel && (
+                        <div style={{ 
+                          fontSize: '10px', 
+                          padding: '0 6px', 
+                          background: `${rentLevel.color}15`, 
+                          color: rentLevel.color,
+                          borderRadius: '10px',
+                          border: `1px solid ${rentLevel.color}30`
+                        }}>
+                          {rentLevel.name}
                         </div>
-                      </div>
+                      )}
                     </div>
                   </div>
-                </Card>
+                </div>
               );
             }) : (
               <div style={{ textAlign: 'center', padding: '40px 0', color: '#bfbfbf' }}>
@@ -473,9 +466,7 @@ const MapManager: React.FC = () => {
       start: { color: '#52c41a', bg: '#f6ffed', label: '起点' },
       jail: { color: '#ff4d4f', bg: '#fff1f0', label: '监狱' },
       fate: { color: '#722ed1', bg: '#f9f0ff', label: '命运' },
-      chance: { color: '#fa8c16', bg: '#fff7e6', label: '机会' },
-      tax: { color: '#595959', bg: '#f5f5f5', label: '税收' },
-      chest: { color: '#eb2f96', bg: '#fff0f6', label: '宝箱' }
+      chance: { color: '#fa8c16', bg: '#fff7e6', label: '机会' }
     };
 
     const config = typeConfig[slot.type] || typeConfig.empty;
@@ -483,9 +474,7 @@ const MapManager: React.FC = () => {
     const prop = properties.find(p => p.id === slot.propertyId);
     const rentLevel = rentLevels.find(r => r.id === prop?.rentLevelId);
     const headerColor = rentLevel?.color || config.color;
-    
-    const isSpecialType = ['start', 'jail', 'fate', 'chance', 'tax', 'chest'].includes(slot.type);
-    const isCustomProperty = slot.type === 'property' || slot.type === 'normal';
+    const isCustomProperty = slot.type === 'property';
     
     return (
       <div 
@@ -520,7 +509,7 @@ const MapManager: React.FC = () => {
         }}
       >
         {/* 序号标记 */}
-        <div style={{ 
+            <div style={{ 
           fontSize: '9px', 
           color: 'rgba(0,0,0,0.3)', 
           position: 'absolute', 
@@ -530,14 +519,14 @@ const MapManager: React.FC = () => {
           fontWeight: 600
         }}>
           #{index + 1}
-        </div>
+            </div>
 
         {/* 删除按钮 */}
-        <Button 
-          type="text" 
-          size="small" 
+            <Button 
+              type="text" 
+              size="small" 
           danger
-          icon={<DeleteOutlined style={{ fontSize: '10px' }} />} 
+              icon={<DeleteOutlined style={{ fontSize: '10px' }} />} 
           style={{ 
             position: 'absolute', 
             top: 2, 
@@ -557,7 +546,7 @@ const MapManager: React.FC = () => {
           }}
           onClick={(e) => {
             e.stopPropagation();
-            const newSlots = [...(currentMap?.slots || [])];
+                const newSlots = [...(currentMap?.slots || [])];
             newSlots.splice(index, 1);
             updateMapWithHistory({ ...currentMap!, slots: newSlots });
           }}
