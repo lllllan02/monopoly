@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { 
   Table, Button, Modal, Form, Input, InputNumber, 
   Space, Tag, Select, Typography, 
-  Popconfirm, Tabs, Layout, App
+  Popconfirm, Tabs, Layout, App, Segmented, Divider, Card
 } from 'antd';
 import { 
   EnvironmentOutlined, 
@@ -14,11 +14,14 @@ import {
   SaveOutlined,
   ArrowLeftOutlined,
   DragOutlined,
-  UndoOutlined
+  UndoOutlined,
+  FilterOutlined,
+  InfoCircleOutlined
 } from '@ant-design/icons';
 import { type Map, MapService } from '../services/MapService';
 import { type Theme, ThemeService } from '../services/ThemeService';
 import { type Property, PropertyService } from '../services/PropertyService';
+import { type RentLevel, RentLevelService } from '../services/RentLevelService';
 
 const { Content, Sider } = Layout;
 const { Text, Title, Paragraph } = Typography;
@@ -30,6 +33,7 @@ const MapManager: React.FC = () => {
   const [maps, setMaps] = useState<Map[]>([]);
   const [themes, setThemes] = useState<Theme[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
+  const [rentLevels, setRentLevels] = useState<RentLevel[]>([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingMap, setEditingMap] = useState<Map | null>(null);
   const [activeThemeId, setActiveThemeId] = useState<string>('');
@@ -40,7 +44,8 @@ const MapManager: React.FC = () => {
   const [currentMap, setCurrentMap] = useState<Map | null>(null);
   const [history, setHistory] = useState<Map[]>([]);
   const [isSaving, setIsSaving] = useState(false);
-  const [draggingSlotIndex, setDraggingSlotIndex] = useState<number | null>(null);
+  const [libraryFilter, setLibraryFilter] = useState<'builtin' | 'custom'>('builtin');
+  const [secondaryFilter, setSecondaryFilter] = useState<string>('all');
 
   // 辅助函数：更新地图并记录历史
   const updateMapWithHistory = (newMap: Map) => {
@@ -60,14 +65,16 @@ const MapManager: React.FC = () => {
 
   const fetchData = async () => {
     try {
-      const [mapsData, themesData, propsData] = await Promise.all([
+      const [mapsData, themesData, propsData, rentLevelsData] = await Promise.all([
         MapService.getAll().catch(() => []),
         ThemeService.getAll().catch(() => []),
-        PropertyService.getAll().catch(() => [])
+        PropertyService.getAll().catch(() => []),
+        RentLevelService.getAll().catch(() => [])
       ]);
       setMaps(Array.isArray(mapsData) ? mapsData : []);
       setThemes(Array.isArray(themesData) ? themesData : []);
       setProperties(Array.isArray(propsData) ? propsData : []);
+      setRentLevels(Array.isArray(rentLevelsData) ? rentLevelsData : []);
       
       if (Array.isArray(themesData) && themesData.length > 0 && !activeThemeId) {
         setActiveThemeId(themesData[0].id);
@@ -152,82 +159,186 @@ const MapManager: React.FC = () => {
   // 渲染地块库（可拖动）
   const renderLibrary = () => {
     const themeProps = properties.filter(p => p.themeId === currentMap?.themeId);
+    const themeRentLevels = rentLevels.filter(r => r.themeId === currentMap?.themeId);
     
-    const functionalSlots = [
-      { type: 'start', name: '起点' },
-      { type: 'jail', name: '监狱' },
-      { type: 'fate', name: '命运' },
-      { type: 'chance', name: '机会' },
-      { type: 'tax', name: '税收格' },
-      { type: 'chest', name: '宝库格' }
-    ];
+    const allItems = themeProps.map(p => ({ 
+      type: p.type, 
+      name: p.name, 
+      propertyId: p.id, 
+      category: p.isDefault ? 'builtin' : 'custom',
+      rentLevelId: p.rentLevelId,
+      isPlaced: currentMap?.slots.some(slot => slot.propertyId === p.id),
+      detail: p 
+    }));
+
+    // 筛选逻辑
+    const filteredItems = allItems.filter(item => {
+      // 1. 唯一性筛选：已经在画板中的地块不再展示
+      if (item.isPlaced) return false;
+
+      // 2. 一级筛选：内置 vs 自定义
+      if (item.category !== libraryFilter) return false;
+
+      // 3. 二级筛选
+      if (secondaryFilter === 'all') return true;
+      if (libraryFilter === 'builtin') {
+        return item.type === secondaryFilter;
+      } else {
+        return item.rentLevelId === secondaryFilter;
+      }
+    });
+
+    const getSecondaryOptions = () => {
+      if (libraryFilter === 'builtin') {
+        const types = Array.from(new Set(allItems.filter(i => i.category === 'builtin').map(i => i.type)));
+        const typeLabels: Record<string, string> = {
+          start: '起点', jail: '监狱', fate: '命运', chance: '机会', station: '车站', utility: '公用事业', normal: '普通土地'
+        };
+        return [
+          { label: '全部类型', value: 'all' },
+          ...types.map(t => ({ label: typeLabels[t] || t, value: t }))
+        ];
+      } else {
+        return [
+          { label: '全部等级', value: 'all' },
+          ...themeRentLevels.map(r => ({ label: r.name, value: r.id }))
+        ];
+      }
+    };
 
     return (
-      <div style={{ padding: '16px' }}>
-        <Title level={5} style={{ marginBottom: 16 }}>1. 基础功能格</Title>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 32 }}>
-          {functionalSlots.map(slot => (
-            <div 
-              key={slot.type}
-              draggable
-              onDragStart={(e) => {
-                const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-                e.dataTransfer.setData('offsetX', (GRID_SIZE / 2).toString());
-                e.dataTransfer.setData('offsetY', (GRID_SIZE / 2).toString());
-                e.dataTransfer.setData('slotType', slot.type);
-                e.dataTransfer.setData('slotName', slot.name);
-                e.dataTransfer.setData('sourceIndex', '');
-              }}
-              style={{
-                padding: '6px 10px',
-                background: '#fafafa',
-                border: '1px solid #d9d9d9',
-                borderRadius: '4px',
-                cursor: 'grab',
-                fontSize: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4
-              }}
-            >
-              <DragOutlined /> {slot.name}
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div style={{ padding: '16px', borderBottom: '1px solid #f0f0f0', background: '#fff' }}>
+          <Title level={5} style={{ marginBottom: 16 }}>
+            <FilterOutlined style={{ marginRight: 8 }} />地块资源库
+          </Title>
+          <Segmented
+            block
+            value={libraryFilter}
+            onChange={(v) => {
+              setLibraryFilter(v as 'builtin' | 'custom');
+              setSecondaryFilter('all'); // 切换一级时重置二级
+            }}
+            options={[
+              { label: '内置地块', value: 'builtin' },
+              { label: '自定义地块', value: 'custom' }
+            ]}
+          />
+          <div style={{ marginTop: 12 }}>
+            <Text type="secondary" style={{ fontSize: '11px', display: 'block', marginBottom: 8, opacity: 0.6 }}>
+              {libraryFilter === 'builtin' ? '按类型快捷筛选:' : '按收益等级快捷筛选:'}
+            </Text>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {getSecondaryOptions().map(opt => (
+                <div
+                  key={opt.value}
+                  onClick={() => setSecondaryFilter(opt.value)}
+                  style={{ 
+                    padding: '2px 10px',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    border: '1px solid',
+                    borderColor: secondaryFilter === opt.value ? '#722ed1' : '#d9d9d9',
+                    background: secondaryFilter === opt.value ? '#f9f0ff' : '#fff',
+                    color: secondaryFilter === opt.value ? '#722ed1' : 'rgba(0,0,0,0.65)',
+                    fontWeight: secondaryFilter === opt.value ? 500 : 'normal'
+                  }}
+                >
+                  {opt.label}
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
         </div>
 
-        <Title level={5} style={{ marginBottom: 16 }}>2. 关联资产库</Title>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {themeProps.map(prop => (
-            <div 
-              key={prop.id}
-              draggable
-              onDragStart={(e) => {
-                const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-                e.dataTransfer.setData('offsetX', (GRID_SIZE / 2).toString());
-                e.dataTransfer.setData('offsetY', (GRID_SIZE / 2).toString());
-                e.dataTransfer.setData('propertyId', prop.id);
-                e.dataTransfer.setData('slotType', 'property');
-                e.dataTransfer.setData('sourceIndex', '');
-              }}
-              style={{
-                padding: '10px 12px',
-                background: '#fff',
-                border: '1px solid #f0f0f0',
-                borderRadius: '6px',
-                cursor: 'grab',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
-              }}
-            >
-              <DragOutlined style={{ color: '#bfbfbf' }} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '14px', fontWeight: 500 }}>{prop.name}</div>
-                <div style={{ fontSize: '11px', color: '#8c8c8c' }}>{prop.type === 'normal' ? '土地' : '特殊'}</div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {filteredItems.length > 0 ? filteredItems.map((item) => {
+              const isProperty = item.category === 'custom';
+              const typeColor = isProperty ? '#1890ff' : '#52c41a';
+              
+              return (
+                <Card
+                  key={`${item.propertyId}`}
+                  size="small"
+                  hoverable
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('offsetX', (GRID_SIZE / 2).toString());
+                    e.dataTransfer.setData('offsetY', (GRID_SIZE / 2).toString());
+                    e.dataTransfer.setData('propertyId', item.propertyId);
+                    e.dataTransfer.setData('slotType', item.type);
+                    e.dataTransfer.setData('sourceIndex', '');
+                  }}
+                  bodyStyle={{ padding: '12px' }}
+                  style={{ 
+                    cursor: 'grab', 
+                    border: '1px solid #f0f0f0',
+                    background: '#fff',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                    <div style={{ 
+                      width: '32px', 
+                      height: '32px', 
+                      background: isProperty ? '#e6f7ff' : '#f6ffed',
+                      borderRadius: '6px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: typeColor,
+                      flexShrink: 0
+                    }}>
+                      <DragOutlined />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                        <Text strong style={{ fontSize: '14px' }}>{item.name}</Text>
+                        <Tag color={isProperty ? 'blue' : 'green'} style={{ marginRight: 0, fontSize: '10px' }}>
+                          {isProperty ? '自定义' : '内置'}
+                        </Tag>
+                      </div>
+                      
+                      <div style={{ fontSize: '12px', color: '#8c8c8c' }}>
+                        {isProperty ? (
+                          <Space split={<Divider type="vertical" />} size={4} wrap>
+                            <span>价格: <Text type="warning">¥{item.detail?.price || 0}</Text></span>
+                            {item.detail?.rentLevelId && (
+                              <span>收益: {rentLevels.find(r => r.id === item.detail?.rentLevelId)?.name}</span>
+                            )}
+                          </Space>
+                        ) : (
+                          <span>{item.detail?.description || '基础功能地块'}</span>
+                        )}
+                        <div style={{ marginTop: 4, opacity: 0.8 }}>
+                          类型: {item.type}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              );
+            }) : (
+              <div style={{ textAlign: 'center', padding: '40px 0', color: '#bfbfbf' }}>
+                暂无匹配地块
               </div>
+            )}
+          </div>
+        </div>
+        
+        <div style={{ padding: '12px', background: '#fafafa', borderTop: '1px solid #f0f0f0' }}>
+          <Space align="start">
+            <InfoCircleOutlined style={{ color: '#1890ff', marginTop: 3 }} />
+            <div style={{ fontSize: '12px', color: '#8c8c8c' }}>
+              正在编辑: <Text strong>{currentMap?.name}</Text>
+              <br />
+              资源库仅显示当前主题下的地块。
             </div>
-          ))}
+          </Space>
         </div>
       </div>
     );
@@ -251,9 +362,7 @@ const MapManager: React.FC = () => {
     const x = Math.round(rawX / GRID_SIZE) * GRID_SIZE;
     const y = Math.round(rawY / GRID_SIZE) * GRID_SIZE;
 
-    const slotType = e.dataTransfer.getData('slotType');
     const propId = e.dataTransfer.getData('propertyId');
-    const slotName = e.dataTransfer.getData('slotName');
     const sourceIndex = e.dataTransfer.getData('sourceIndex');
     
     if (currentMap) {
@@ -263,20 +372,27 @@ const MapManager: React.FC = () => {
         // 移动已有地块
         const idx = parseInt(sourceIndex);
         newSlots[idx] = { ...newSlots[idx], x, y };
-      } else {
-        // 新增地块
-        let newSlot: any = { x, y, type: slotType };
-        if (slotType === 'property' && propId) {
-          const prop = properties.find(p => p.id === propId);
-          if (prop) {
-            newSlot = { ...newSlot, propertyId: prop.id, name: prop.name };
+      } else if (propId) {
+        // 新增地块：严格从 properties 匹配
+        const prop = properties.find(p => p.id === propId);
+        if (prop) {
+          // 映射地块类型到 MapSlot 要求的类型
+          let slotType: any = prop.type;
+          if (['normal', 'station', 'utility'].includes(prop.type)) {
+            slotType = 'property';
           }
-        } else {
-          newSlot.name = slotName;
+          
+          const newSlot: any = { 
+            x, 
+            y, 
+            type: slotType,
+            propertyId: prop.id,
+            name: prop.name
+          };
+          // 过滤掉 empty 占位符
+          newSlots = newSlots.filter(s => s.type !== 'empty');
+          newSlots.push(newSlot);
         }
-        // 过滤掉原本可能存在的 empty 占位符
-        newSlots = newSlots.filter(s => s.type !== 'empty');
-        newSlots.push(newSlot);
       }
       
       updateMapWithHistory({ ...currentMap, slots: newSlots });
@@ -289,7 +405,10 @@ const MapManager: React.FC = () => {
     
     const typeConfig: Record<string, { color: string, bg: string }> = {
       empty: { color: '#d9d9d9', bg: '#fafafa' },
-      property: { color: '#1890ff', bg: '#e6f7ff' },
+      property: { color: '#1890ff', bg: '#e6f7ff' }, // 涵盖 normal, station, utility
+      normal: { color: '#1890ff', bg: '#e6f7ff' },
+      station: { color: '#1890ff', bg: '#e6f7ff' },
+      utility: { color: '#1890ff', bg: '#e6f7ff' },
       start: { color: '#52c41a', bg: '#f6ffed' },
       jail: { color: '#ff4d4f', bg: '#fff1f0' },
       fate: { color: '#722ed1', bg: '#f9f0ff' },
@@ -333,37 +452,37 @@ const MapManager: React.FC = () => {
         }}
       >
         <div style={{ fontSize: '9px', color: '#bfbfbf', position: 'absolute', top: 2, left: 3 }}>#{index + 1}</div>
-        <div style={{ 
+            <div style={{ 
           fontSize: '11px', 
-          fontWeight: 600, 
-          color: '#1a1a1a', 
+              fontWeight: 600, 
+              color: '#1a1a1a', 
           lineHeight: '1.2',
           marginBottom: 2,
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
           display: '-webkit-box',
           WebkitLineClamp: 2,
           WebkitBoxOrient: 'vertical',
-          width: '100%'
-        }}>
-          {slot.name}
-        </div>
+              width: '100%'
+            }}>
+              {slot.name}
+            </div>
         <div style={{ fontSize: '8px', color: config.color, textTransform: 'uppercase', fontWeight: 'bold' }}>
-          {slot.type}
-        </div>
-        <Button 
-          type="text" 
-          size="small" 
+              {slot.type}
+            </div>
+            <Button 
+              type="text" 
+              size="small" 
           danger
-          icon={<DeleteOutlined style={{ fontSize: '10px' }} />} 
+              icon={<DeleteOutlined style={{ fontSize: '10px' }} />} 
           style={{ position: 'absolute', top: -8, right: -8, height: '20px', width: '20px', minWidth: '20px', background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.1)', borderRadius: '50%', padding: 0 }}
           onClick={(e) => {
             e.stopPropagation();
-            const newSlots = [...(currentMap?.slots || [])];
+                const newSlots = [...(currentMap?.slots || [])];
             newSlots.splice(index, 1);
             updateMapWithHistory({ ...currentMap!, slots: newSlots });
-          }}
-        />
+              }}
+            />
       </div>
     );
   };
@@ -377,10 +496,10 @@ const MapManager: React.FC = () => {
         <Content style={{ position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: '16px 24px', borderBottom: '1px solid #f0f0f0', background: '#fff', zIndex: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Space size={16}>
-                <Button icon={<ArrowLeftOutlined />} onClick={() => setIsEditorOpen(false)}>返回列表</Button>
-                <Title level={4} style={{ margin: 0 }}>地图编辑: {currentMap?.name}</Title>
-              </Space>
+            <Space size={16}>
+              <Button icon={<ArrowLeftOutlined />} onClick={() => setIsEditorOpen(false)}>返回列表</Button>
+              <Title level={4} style={{ margin: 0 }}>地图编辑: {currentMap?.name}</Title>
+            </Space>
               <Space>
                 <Text type="secondary">提示: 拖拽左侧地块到网格中，可自由移动地块</Text>
                 <Button 
