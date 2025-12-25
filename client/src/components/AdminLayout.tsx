@@ -40,14 +40,14 @@ const AdminLayout: React.FC = () => {
       label: '地块管理',
     },
     {
+      key: '/admin/cards',
+      icon: <IdcardOutlined />,
+      label: '卡组管理',
+    },
+    {
       key: '/admin/maps',
       icon: <EnvironmentOutlined />,
       label: '地图设计',
-    },
-    {
-      key: '/admin/cards',
-      icon: <IdcardOutlined />,
-      label: '命运/机会卡',
     }
   ];
 
