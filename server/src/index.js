@@ -24,6 +24,9 @@ const io = new Server(server, {
   }
 });
 
+// --- 辅助函数 ---
+const generateId = (prefix) => `${prefix}_${uuidv4().split('-')[0]}`;
+
 // --- 土地经济等级管理 API ---
 app.get('/api/rent-levels', (req, res) => {
   res.json(dbRentLevels.data.levels);
@@ -31,7 +34,7 @@ app.get('/api/rent-levels', (req, res) => {
 
 app.post('/api/rent-levels', async (req, res) => {
   const newLevel = {
-    id: uuidv4(),
+    id: generateId('level'),
     ...req.body
   };
   dbRentLevels.data.levels.push(newLevel);
@@ -67,6 +70,7 @@ app.get('/api/themes', (req, res) => {
 });
 
 app.post('/api/themes', async (req, res) => {
+  const themeId = generateId('theme');
   const newTheme = {
     id: themeId,
     name: req.body.name || '新主题',
@@ -81,18 +85,17 @@ app.post('/api/themes', async (req, res) => {
   };
 
   // 自动为新主题创建全套内置地块 (Default Tiles)
-  const themeId = newTheme.id;
   const defaultTiles = [
-    { id: uuidv4(), name: '起点', themeId, type: 'start', isDefault: true, description: '游戏的起点，路过此地可领取奖励。' },
-    { id: uuidv4(), name: '监狱', themeId, type: 'jail', isDefault: true, description: '违规者的暂居地，停留在此将面临禁足。' },
-    { id: uuidv4(), name: '车站 A', themeId, type: 'station', isDefault: true, price: 200, description: '枢纽车站，拥有越多收益越高。' },
-    { id: uuidv4(), name: '车站 B', themeId, type: 'station', isDefault: true, price: 200, description: '枢纽车站，拥有越多收益越高。' },
-    { id: uuidv4(), name: '车站 C', themeId, type: 'station', isDefault: true, price: 200, description: '枢纽车站，拥有越多收益越高。' },
-    { id: uuidv4(), name: '车站 D', themeId, type: 'station', isDefault: true, price: 200, description: '枢纽车站，拥有越多收益越高。' },
-    { id: uuidv4(), name: '自来水厂', themeId, type: 'utility', isDefault: true, price: 150, description: '公用事业，根据骰子点数收取租金。' },
-    { id: uuidv4(), name: '电力公司', themeId, type: 'utility', isDefault: true, price: 150, description: '公用事业，根据骰子点数收取租金。' },
-    { id: uuidv4(), name: '命运', themeId, type: 'fate', isDefault: true, description: '命运格，停留在此将抽取一张命运卡。' },
-    { id: uuidv4(), name: '机会', themeId, type: 'chance', isDefault: true, description: '机会格，停留在此将抽取一张机会卡。' }
+    { id: generateId('tile'), name: '起点', themeId, type: 'start', isDefault: true, description: '游戏的起点，路过此地可领取奖励。' },
+    { id: generateId('tile'), name: '监狱', themeId, type: 'jail', isDefault: true, description: '违规者的暂居地，停留在此将面临禁足。' },
+    { id: generateId('tile'), name: '车站 A', themeId, type: 'station', isDefault: true, price: 200, description: '枢纽车站，拥有越多收益越高。' },
+    { id: generateId('tile'), name: '车站 B', themeId, type: 'station', isDefault: true, price: 200, description: '枢纽车站，拥有越多收益越高。' },
+    { id: generateId('tile'), name: '车站 C', themeId, type: 'station', isDefault: true, price: 200, description: '枢纽车站，拥有越多收益越高。' },
+    { id: generateId('tile'), name: '车站 D', themeId, type: 'station', isDefault: true, price: 200, description: '枢纽车站，拥有越多收益越高。' },
+    { id: generateId('tile'), name: '自来水厂', themeId, type: 'utility', isDefault: true, price: 150, description: '公用事业，根据骰子点数收取租金。' },
+    { id: generateId('tile'), name: '电力公司', themeId, type: 'utility', isDefault: true, price: 150, description: '公用事业，根据骰子点数收取租金。' },
+    { id: generateId('tile'), name: '命运', themeId, type: 'fate', isDefault: true, description: '命运格，停留在此将抽取一张命运卡。' },
+    { id: generateId('tile'), name: '机会', themeId, type: 'chance', isDefault: true, description: '机会格，停留在此将抽取一张机会卡。' }
   ];
 
   dbThemes.data.themes.push(newTheme);
@@ -138,7 +141,7 @@ app.post('/api/properties', async (req, res) => {
   }
 
   const newProperty = {
-    id: uuidv4(),
+    id: generateId('tile'),
     ...req.body
   };
 
@@ -173,7 +176,7 @@ app.get('/api/maps', (req, res) => res.json(dbMaps.data.maps));
 
 app.post('/api/maps', async (req, res) => {
   const newMap = {
-    id: uuidv4(),
+    id: generateId('map'),
     ...req.body
   };
   dbMaps.data.maps.push(newMap);
