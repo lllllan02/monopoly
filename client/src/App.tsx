@@ -13,7 +13,14 @@ import './App.css';
 
 function App() {
   return (
-    <ConfigProvider>
+    <ConfigProvider
+      theme={{
+        token: {
+          colorPrimary: '#722ed1',
+          borderRadius: 6,
+        },
+      }}
+    >
       <AntdApp>
         <BrowserRouter>
           <Routes>

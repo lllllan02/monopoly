@@ -290,10 +290,18 @@ const MapManager: React.FC = () => {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
+                      fontSize: '18px',
                       color: typeColor,
-                      flexShrink: 0
+                      flexShrink: 0,
+                      border: '1px solid rgba(0,0,0,0.05)',
+                      overflow: 'hidden'
                     }}>
-                      <DragOutlined />
+                      {(() => {
+                        const iconValue = Array.isArray(item.detail?.icon) ? item.detail?.icon[0] : item.detail?.icon;
+                        const isUrl = iconValue && (iconValue.startsWith('http') || iconValue.startsWith('/') || iconValue.startsWith('data:'));
+                        if (isUrl) return <img src={iconValue} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="logo" />;
+                        return iconValue || <DragOutlined style={{ fontSize: '14px' }} />;
+                      })()}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
@@ -387,7 +395,8 @@ const MapManager: React.FC = () => {
             y, 
             type: slotType,
             propertyId: prop.id,
-            name: prop.name
+            name: prop.name,
+            icon: prop.icon
           };
           // 过滤掉 empty 占位符
           newSlots = newSlots.filter(s => s.type !== 'empty');
@@ -403,21 +412,27 @@ const MapManager: React.FC = () => {
     const slot = currentMap?.slots[index];
     if (!slot || slot.type === 'empty') return null;
     
-    const typeConfig: Record<string, { color: string, bg: string }> = {
-      empty: { color: '#d9d9d9', bg: '#fafafa' },
-      property: { color: '#1890ff', bg: '#e6f7ff' }, // 涵盖 normal, station, utility
-      normal: { color: '#1890ff', bg: '#e6f7ff' },
-      station: { color: '#1890ff', bg: '#e6f7ff' },
-      utility: { color: '#1890ff', bg: '#e6f7ff' },
-      start: { color: '#52c41a', bg: '#f6ffed' },
-      jail: { color: '#ff4d4f', bg: '#fff1f0' },
-      fate: { color: '#722ed1', bg: '#f9f0ff' },
-      chance: { color: '#fa8c16', bg: '#fff7e6' },
-      tax: { color: '#595959', bg: '#f5f5f5' },
-      chest: { color: '#eb2f96', bg: '#fff0f6' }
+    const typeConfig: Record<string, { color: string, bg: string, label: string }> = {
+      empty: { color: '#d9d9d9', bg: '#fafafa', label: '空' },
+      property: { color: '#1890ff', bg: '#ffffff', label: '土地' },
+      normal: { color: '#1890ff', bg: '#ffffff', label: '土地' },
+      station: { color: '#595959', bg: '#ffffff', label: '车站' },
+      utility: { color: '#faad14', bg: '#ffffff', label: '公用' },
+      start: { color: '#52c41a', bg: '#f6ffed', label: '起点' },
+      jail: { color: '#ff4d4f', bg: '#fff1f0', label: '监狱' },
+      fate: { color: '#722ed1', bg: '#f9f0ff', label: '命运' },
+      chance: { color: '#fa8c16', bg: '#fff7e6', label: '机会' },
+      tax: { color: '#595959', bg: '#f5f5f5', label: '税收' },
+      chest: { color: '#eb2f96', bg: '#fff0f6', label: '宝箱' }
     };
 
     const config = typeConfig[slot.type] || typeConfig.empty;
+    // 获取关联地块的颜色（如果是普通土地）
+    const prop = properties.find(p => p.id === slot.propertyId);
+    const rentLevel = rentLevels.find(r => r.id === prop?.rentLevelId);
+    const headerColor = rentLevel?.color || config.color;
+    
+    const isSpecialType = ['start', 'jail', 'fate', 'chance', 'tax', 'chest'].includes(slot.type);
     
     return (
       <div 
@@ -431,58 +446,152 @@ const MapManager: React.FC = () => {
           e.dataTransfer.setData('slotType', slot.type);
         }}
         style={{
-          width: GRID_SIZE - 4,
-          height: GRID_SIZE - 4,
-          border: `1px solid ${config.color}`,
+          width: GRID_SIZE - 2,
+          height: GRID_SIZE - 2,
+          border: `2px solid ${config.color}`,
           borderRadius: '4px',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'center',
+          justifyContent: 'flex-start',
           background: config.bg,
           position: 'absolute',
-          left: ((slot.x || 0) - originX) + 2,
-          top: ((slot.y || 0) - originY) + 2,
-          padding: 6,
+          left: ((slot.x || 0) - originX) + 1,
+          top: ((slot.y || 0) - originY) + 1,
           textAlign: 'center',
-          transition: 'box-shadow 0.2s',
+          transition: 'all 0.2s',
           cursor: 'move',
-          zIndex: 10,
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+          zIndex: isSpecialType ? 15 : 10, // 特殊地块层级更高
+          boxShadow: '0 4px 8px rgba(0,0,0,0.12)',
+          overflow: isSpecialType ? 'visible' : 'hidden' // 特殊地块允许溢出
         }}
       >
-        <div style={{ fontSize: '9px', color: '#bfbfbf', position: 'absolute', top: 2, left: 3 }}>#{index + 1}</div>
-            <div style={{ 
-          fontSize: '11px', 
-              fontWeight: 600, 
-              color: '#1a1a1a', 
-          lineHeight: '1.2',
-          marginBottom: 2,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-          display: '-webkit-box',
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical',
-              width: '100%'
-            }}>
-              {slot.name}
-            </div>
-        <div style={{ fontSize: '8px', color: config.color, textTransform: 'uppercase', fontWeight: 'bold' }}>
-              {slot.type}
-            </div>
-            <Button 
-              type="text" 
-              size="small" 
+        {/* 顶部色块：模仿大富翁经典设计 */}
+        <div style={{ 
+          width: '100%', 
+          height: '18px', 
+          background: headerColor, 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          borderBottom: `1px solid rgba(0,0,0,0.1)`,
+          zIndex: 2 // 确保文字不被图标遮挡
+        }}>
+          <span style={{ fontSize: '9px', color: '#fff', fontWeight: 'bold', textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
+            {config.label}
+          </span>
+        </div>
+
+        {/* 主体 Logo 区域 */}
+        <div style={{ 
+          flex: 1, 
+          width: '100%', 
+          display: 'flex', 
+          flexDirection: 'column',
+          alignItems: 'center', 
+          justifyContent: 'center',
+          padding: '4px',
+          position: 'relative',
+          overflow: isSpecialType ? 'visible' : 'hidden'
+        }}>
+          {slot.icon ? (() => {
+            const iconValue = Array.isArray(slot.icon) ? slot.icon[0] : slot.icon;
+            const isUrl = iconValue && (iconValue.startsWith('http') || iconValue.startsWith('/') || iconValue.startsWith('data:'));
+            
+            // 特殊地块的大图案样式
+            const specialImgStyle: React.CSSProperties = {
+              width: GRID_SIZE * 1.1, // 略大于格子
+              height: GRID_SIZE * 1.1,
+              objectFit: 'contain',
+              position: 'absolute',
+              bottom: '-5px', // 向下偏移，产生立体感
+              filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))',
+              pointerEvents: 'none' // 防止遮挡拖拽
+            };
+
+            // 普通地块的矢量图样式
+            const normalImgStyle: React.CSSProperties = {
+              width: '42px', 
+              height: '42px', 
+              objectFit: 'contain'
+            };
+
+            return (
+              <div style={{ 
+                width: isSpecialType ? '100%' : '42px', 
+                height: isSpecialType ? '100%' : '42px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                position: isSpecialType ? 'static' : 'relative'
+              }}>
+                {isUrl ? (
+                  <img 
+                    src={iconValue} 
+                    style={isSpecialType ? specialImgStyle : normalImgStyle} 
+                    alt="logo" 
+                  />
+                ) : iconValue && iconValue.trim().startsWith('<svg') ? (
+                  <div 
+                    style={isSpecialType ? { ...specialImgStyle, display: 'flex', alignItems: 'center', justifyContent: 'center' } : { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    dangerouslySetInnerHTML={{ __html: iconValue }}
+                  />
+                ) : (
+                  <span style={{ fontSize: isSpecialType ? '48px' : '32px', transform: isSpecialType ? 'translateY(5px)' : 'none' }}>
+                    {iconValue}
+                  </span>
+                )}
+              </div>
+            );
+          })() : (
+            <div style={{ fontSize: '24px', opacity: 0.2 }}>{config.label[0]}</div>
+          )}
+
+          {/* 名称层叠在底部 */}
+          <div style={{ 
+            fontSize: '10px', 
+            fontWeight: 'bold', 
+            color: '#333', 
+            width: '90%',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            marginTop: '2px',
+            background: isSpecialType ? 'rgba(255,255,255,0.7)' : 'transparent',
+            borderRadius: '2px',
+            zIndex: 3
+          }}>
+            {slot.name}
+          </div>
+        </div>
+
+        <div style={{ fontSize: '8px', color: '#bfbfbf', position: 'absolute', top: 2, left: 3, zIndex: 5 }}>#{index + 1}</div>
+        
+        <Button 
+          type="text" 
+          size="small" 
           danger
-              icon={<DeleteOutlined style={{ fontSize: '10px' }} />} 
-          style={{ position: 'absolute', top: -8, right: -8, height: '20px', width: '20px', minWidth: '20px', background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.1)', borderRadius: '50%', padding: 0 }}
+          icon={<DeleteOutlined style={{ fontSize: '10px' }} />} 
+          style={{ 
+            position: 'absolute', 
+            top: 2, 
+            right: 2, 
+            height: '16px', 
+            width: '16px', 
+            minWidth: '16px', 
+            background: 'rgba(255,255,255,0.8)', 
+            boxShadow: '0 1px 4px rgba(0,0,0,0.1)', 
+            borderRadius: '50%', 
+            padding: 0,
+            zIndex: 20
+          }}
           onClick={(e) => {
             e.stopPropagation();
-                const newSlots = [...(currentMap?.slots || [])];
+            const newSlots = [...(currentMap?.slots || [])];
             newSlots.splice(index, 1);
             updateMapWithHistory({ ...currentMap!, slots: newSlots });
-              }}
-            />
+          }}
+        />
       </div>
     );
   };

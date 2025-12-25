@@ -85,18 +85,26 @@ const PropertyManager: React.FC = () => {
 
   const handleEdit = (record: Property) => {
     setEditingProperty(record);
-    form.setFieldsValue(record);
+    // 如果 icon 是字符串，转为数组以适配 Select mode="tags"
+    const formValues = {
+      ...record,
+      icon: record.icon ? (Array.isArray(record.icon) ? record.icon : [record.icon]) : []
+    };
+    form.setFieldsValue(formValues);
     setIsModalVisible(true);
   };
 
   const handleClone = (record: Property) => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { id, createdAt, updatedAt, ...cloneData } = record;
+    const { id, ...cloneData } = record;
     setEditingProperty(null);
-    form.setFieldsValue({
+    // 如果 icon 是字符串，转为数组以适配 Select mode="tags"
+    const formValues = {
       ...cloneData,
+      icon: cloneData.icon ? (Array.isArray(cloneData.icon) ? cloneData.icon : [cloneData.icon]) : [],
       name: `${cloneData.name} (副本)`
-    });
+    };
+    form.setFieldsValue(formValues);
     setIsModalVisible(true);
   };
 
@@ -114,11 +122,18 @@ const PropertyManager: React.FC = () => {
   const handleOk = async () => {
     try {
       const values = await form.validateFields();
+      
+      // 处理 icon 字段：如果 mode="tags" 返回的是数组，则取第一个元素转为字符串
+      const processedValues = {
+        ...values,
+        icon: Array.isArray(values.icon) ? values.icon[0] : values.icon
+      };
+
       if (editingProperty) {
-        await PropertyService.update(editingProperty.id, values);
+        await PropertyService.update(editingProperty.id, processedValues);
         message.success('更新成功');
       } else {
-        await PropertyService.create(values);
+        await PropertyService.create(processedValues);
         message.success('添加成功');
       }
       setIsModalVisible(false);
@@ -148,6 +163,45 @@ const PropertyManager: React.FC = () => {
           <div style={{ fontSize: '12px', color: '#8c8c8c' }}>ID: {record.id}</div>
         </div>
       )
+    },
+    { 
+      title: '视觉标识', 
+      key: 'visual',
+      width: 100,
+      render: (_: any, record: Property) => {
+        // 只有内置/特殊类型的地块显示图标，普通土地不显示图标选择
+        if (record.type === 'normal') return <Text type="secondary" style={{ fontSize: '12px' }}>-</Text>;
+
+        const iconValue = Array.isArray(record.icon) ? record.icon[0] : record.icon;
+        const isUrl = iconValue && (iconValue.startsWith('http') || iconValue.startsWith('/') || iconValue.startsWith('data:'));
+        
+        return (
+          <div style={{ 
+            width: '40px', 
+            height: '40px', 
+            background: '#f5f5f5', 
+            borderRadius: '8px', 
+            padding: '4px',
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            fontSize: '20px',
+            border: '1px solid #e8e8e8',
+            overflow: 'hidden'
+          }}>
+            {isUrl ? (
+              <img src={iconValue} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="logo" />
+            ) : iconValue && iconValue.trim().startsWith('<svg') ? (
+              <div 
+                style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                dangerouslySetInnerHTML={{ __html: iconValue }}
+              />
+            ) : (
+              iconValue || '🔲'
+            )}
+          </div>
+        );
+      }
     },
     { 
       title: '类型', 
@@ -473,7 +527,43 @@ const PropertyManager: React.FC = () => {
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="themeId" label={<span style={{ fontWeight: 600, color: '#595959' }}>所属游戏主题</span>} rules={[{ required: true }]}>
+                {currentType !== 'normal' && (
+                  <Form.Item 
+                    name="icon" 
+                    label={<span style={{ fontWeight: 600, color: '#595959' }}>展示图标 (根据类型自动适配)</span>} 
+                    rules={[{ required: currentType !== 'normal', message: '请选择或输入图标' }]}
+                  >
+                    <Select 
+                      size="large" 
+                      mode="tags"
+                      maxCount={1}
+                      style={{ borderRadius: '8px' }} 
+                      placeholder="选一个图标或输入 URL"
+                    >
+                      <Select.OptGroup label="内置地块 - 指定图案">
+                        {currentType === 'start' && <Select.Option value="/icons/start.svg">🚩 起点 (Start)</Select.Option>}
+                        {currentType === 'jail' && <Select.Option value="/icons/jail.svg">🚔 监狱/拘留 (Jail)</Select.Option>}
+                        {currentType === 'fate' && <Select.Option value="/icons/fate.svg">🔮 命运 (Fate)</Select.Option>}
+                        {currentType === 'chance' && <Select.Option value="/icons/chance.svg">🎲 机会 (Chance)</Select.Option>}
+                        {currentType === 'station' && <Select.Option value="/icons/station.svg">🚂 交通车站 (Station)</Select.Option>}
+                        {currentType === 'utility' && (
+                          <>
+                            <Select.Option value="/icons/utility_power.svg">⚡ 电力公司 (Power)</Select.Option>
+                            <Select.Option value="/icons/utility_water.svg">💧 自来水厂 (Water)</Select.Option>
+                          </>
+                        )}
+                      </Select.OptGroup>
+                      <Select.OptGroup label="自定义">
+                        <Select.Option value="🏢">🏢 默认楼宇</Select.Option>
+                        <Select.Option value="🌳">🌳 公园绿地</Select.Option>
+                      </Select.OptGroup>
+                    </Select>
+                  </Form.Item>
+                )}
+              </Col>
+            </Row>
+            
+            <Form.Item name="themeId" label={<span style={{ fontWeight: 600, color: '#595959' }}>所属游戏主题</span>} rules={[{ required: true }]}>
                   <Select 
                     size="large" 
                     placeholder="选择地块所属主题" 
@@ -485,8 +575,6 @@ const PropertyManager: React.FC = () => {
                     ))}
                   </Select>
                 </Form.Item>
-              </Col>
-            </Row>
           </div>
 
           <Divider style={{ margin: '0 0 32px 0', borderStyle: 'dashed' }} />

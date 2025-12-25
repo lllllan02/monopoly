@@ -5,6 +5,7 @@ export interface MapSlot {
   value?: number; // 针对税收格等设置固定数值
   x?: number; // 横坐标
   y?: number; // 纵坐标
+  icon?: string; // 显示图标
 }
 
 export interface Map {
