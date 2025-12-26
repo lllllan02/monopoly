@@ -470,6 +470,42 @@ const MapManager: React.FC = () => {
   const handleExportSnapshot = async () => {
     if (!currentMap) return;
     
+    // --- 导出前置校验：连通性检查 ---
+    const activeSlots = currentMap.slots.filter(s => s && s.type !== 'empty');
+    const startSlot = activeSlots.find(s => {
+      const p = properties.find(prop => prop.id === s.propertyId);
+      return p ? p.type === 'start' : s.type === 'start';
+    });
+
+    if (!startSlot) {
+      message.error('导出失败：地图必须包含一个“起点”地块');
+      return;
+    }
+
+    const visited = new Set<string>();
+    let cursor: MapSlot | undefined = startSlot;
+    const startId = startSlot.id;
+    let iterations = 0;
+    
+    // 模拟路径遍历
+    while (cursor && iterations < 200) {
+      iterations++;
+      visited.add(cursor.id);
+      const nextId: string | undefined = cursor.nextSlotId;
+      // 如果有下一个节点，且不是起点（环路），且没访问过（防死循环）
+      if (nextId && nextId !== startId && !visited.has(nextId)) {
+        cursor = activeSlots.find(s => s.id === nextId);
+      } else {
+        cursor = undefined;
+      }
+    }
+
+    if (visited.size < activeSlots.length) {
+      const orphanCount = activeSlots.length - visited.size;
+      message.warning(`导出中止：地图中存在 ${orphanCount} 个未连通的地块。请确保所有放置的地块都通过路径相互连接。`);
+      return;
+    }
+    
     const mapSnapshots = snapshots.filter(s => s.mapId === currentMap.id);
     const nextVersionNum = mapSnapshots.length + 1;
     let versionStr = `v${nextVersionNum}`;

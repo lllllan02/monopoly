@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Table, Button, Tag, Space, Typography, Modal, Layout, Empty, Popconfirm, Tabs, App } from 'antd';
+import { Table, Button, Tag, Space, Typography, Modal, Layout, Empty, Popconfirm, Tabs, App, Divider } from 'antd';
 import { 
   CloudServerOutlined, 
   EyeOutlined, 
   ClockCircleOutlined,
   DeleteOutlined,
-  RocketOutlined
+  RocketOutlined,
+  BuildOutlined
 } from '@ant-design/icons';
 import { type MapSlot, SnapshotService, type MapSnapshot, MapService } from '../services/MapService';
 import { type Theme, ThemeService } from '../services/ThemeService';
@@ -172,8 +173,61 @@ const SnapshotManager: React.FC = () => {
     const originX = minX - GRID_SIZE;
     const originY = minY - GRID_SIZE;
 
+    const directions = [
+      { dx: GRID_SIZE, dy: 0, unitX: 1, unitY: 0 },
+      { dx: -GRID_SIZE, dy: 0, unitX: -1, unitY: 0 },
+      { dx: 0, dy: GRID_SIZE, unitX: 0, unitY: 1 },
+      { dx: 0, dy: -GRID_SIZE, unitX: 0, unitY: -1 }
+    ];
+
+    // 构建路径链
+    const pathChain: { from: any, to: any, dir: typeof directions[0] }[] = [];
+    let startSlot = slots.find(s => {
+      const p = snapProps.find(prop => prop.id === s.propertyId);
+      return p ? p.type === 'start' : s.type === 'start';
+    });
+
+    if (startSlot) {
+      const visited = new Set<string>();
+      let current = startSlot;
+      visited.add(current.id);
+      let loopCount = 0;
+      
+      while (current.nextSlotId && loopCount < 200) {
+        loopCount++;
+        const nextId = current.nextSlotId;
+        const next = slots.find(s => s.id === nextId);
+        if (next) {
+          const dx = (next.x || 0) - (current.x || 0);
+          const dy = (next.y || 0) - (current.y || 0);
+          const dir = directions.find(d => Math.abs(d.dx - dx) < 10 && Math.abs(d.dy - dy) < 10);
+          
+          if (dir) {
+            pathChain.push({ from: current, to: next, dir });
+            if (visited.has(next.id)) break; // 闭环
+            visited.add(next.id);
+            current = next;
+          } else break;
+        } else break;
+      }
+    }
+
     const typeColors: Record<string, string> = {
-      start: '#52c41a', jail: '#ff4d4f', fate: '#722ed1', chance: '#fa8c16', station: '#595959', utility: '#faad14', property: '#1890ff'
+      start: '#52c41a', jail: '#ff4d4f', fate: '#722ed1', chance: '#fa8c16', station: '#595959', utility: '#faad14', property: '#1890ff', normal: '#1890ff'
+    };
+
+    const typeConfig: Record<string, { color: string }> = {
+      empty: { color: '#d9d9d9' },
+      property: { color: '#1890ff' },
+      normal: { color: '#1890ff' },
+      station: { color: '#595959' },
+      utility: { color: '#faad14' },
+      start: { color: '#52c41a' },
+      jail: { color: '#ff4d4f' },
+      fate: { color: '#722ed1' },
+      chance: { color: '#fa8c16' },
+      tax: { color: '#8c8c8c' },
+      chest: { color: '#eb2f96' }
     };
 
     return (
@@ -185,7 +239,10 @@ const SnapshotManager: React.FC = () => {
         borderRadius: '8px',
         border: '1px solid #d9d9d9',
         position: 'relative',
-        boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.05)'
+        boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.05)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
       }}>
         <div style={{ 
           width: canvasWidth, 
@@ -193,15 +250,54 @@ const SnapshotManager: React.FC = () => {
           position: 'relative',
           background: '#fff',
           backgroundImage: 'radial-gradient(#d9d9d9 1px, transparent 1px)',
-          backgroundSize: '24px 24px'
+          backgroundSize: '24px 24px',
+          flexShrink: 0,
+          margin: 'auto'
         }}>
+          {/* 渲染路径走向 */}
+          <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 5 }}>
+            {pathChain.map((link, idx) => {
+              const sX = (link.from.x || 0) - originX + GRID_SIZE / 2;
+              const sY = (link.from.y || 0) - originY + GRID_SIZE / 2;
+              const half = GRID_SIZE / 2;
+              const gapX = sX + link.dir.unitX * half;
+              const gapY = sY + link.dir.unitY * half;
+              const rectW = link.dir.unitX ? 8 : GRID_SIZE - 8;
+              const rectH = link.dir.unitY ? 8 : GRID_SIZE - 8;
+
+              return (
+                <g key={`path-link-${idx}`}>
+                  <rect
+                    x={gapX - rectW / 2}
+                    y={gapY - rectH / 2}
+                    width={rectW}
+                    height={rectH}
+                    fill="#ff4d4f"
+                    opacity={0.6}
+                    rx={2}
+                    style={{ filter: 'drop-shadow(0 0 4px rgba(255,77,79,0.4))' }}
+                  />
+                  <polygon 
+                    points={`
+                      ${gapX + link.dir.unitX * 3},${gapY + link.dir.unitY * 3} 
+                      ${gapX - link.dir.unitX * 2 + link.dir.unitY * 4},${gapY - link.dir.unitY * 2 - link.dir.unitX * 4} 
+                      ${gapX - link.dir.unitX * 2 - link.dir.unitY * 4},${gapY - link.dir.unitY * 2 + link.dir.unitX * 4}
+                    `}
+                    fill="#ff4d4f"
+                    opacity={0.8}
+                  />
+                </g>
+              );
+            })}
+          </svg>
+
           {slots.map((slot, index) => {
             const prop = snapProps.find(p => p.id === slot.propertyId);
             const rentLevel = snapLevels.find(r => r.id === prop?.rentLevelId);
             
-            const isBlankManual = !slot.propertyId && slot.type === 'property';
-            const headerColor = slot.headerColor || (rentLevel?.color || (prop ? typeColors[prop.type] : typeColors[slot.type]) || '#d9d9d9');
-            const displayName = slot.name || prop?.name || (isBlankManual ? '空白格' : '');
+            const isBlankManual = !slot.propertyId;
+            const headerColor = slot.headerColor || (rentLevel?.color || (prop ? typeColors[prop.type] : typeConfig[slot.type || 'property']?.color) || '#d9d9d9');
+            const displayName = prop?.name || slot.name || (isBlankManual ? '空白格' : '');
             const displayIcon = slot.icon || prop?.icon;
             const displayPrice = slot.price || prop?.price;
 
@@ -222,7 +318,9 @@ const SnapshotManager: React.FC = () => {
                   top: (slot.y || 0) - originY + 4,
                   border: isBlankManual ? '1.5px dashed rgba(0,0,0,0.1)' : '1.5px solid rgba(0,0,0,0.15)',
                   overflow: 'hidden',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.04)',
+                  flexShrink: 0,
+                  zIndex: 10
                 }}
               >
                 {displayPrice && (
@@ -244,7 +342,16 @@ const SnapshotManager: React.FC = () => {
                   </div>
                 )}
 
-                <div style={{ flex: 1, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
+                <div style={{ 
+                  flex: 1, 
+                  width: '100%', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  padding: '4px',
+                  overflow: 'hidden',
+                  zIndex: 1
+                }}>
                   {displayIcon && (
                     typeof displayIcon === 'string' && displayIcon.startsWith('<svg') ? (
                       <div dangerouslySetInnerHTML={{ __html: displayIcon }} style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
@@ -253,6 +360,7 @@ const SnapshotManager: React.FC = () => {
                     )
                   )}
                 </div>
+                
                 {displayName && !isBlankManual && (
                   <div style={{ 
                     width: '100%', 
@@ -265,16 +373,18 @@ const SnapshotManager: React.FC = () => {
                     alignItems: 'center', 
                     justifyContent: 'center',
                     padding: '0 4px',
-                    boxShadow: '0 -1px 2px rgba(0,0,0,0.1)'
+                    boxShadow: '0 -1px 2px rgba(0,0,0,0.1)',
+                    zIndex: 5
                   }}>
-                    <span style={{ 
+                    <div style={{ 
                       whiteSpace: 'nowrap', 
                       overflow: 'hidden', 
                       textOverflow: 'ellipsis',
-                      textShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                      textShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                      textAlign: 'center'
                     }}>
                       {displayName}
-                    </span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -355,26 +465,26 @@ const SnapshotManager: React.FC = () => {
         destroyOnClose
         centered
       >
-        <div style={{ marginBottom: 20 }}>
-          <Space size="middle">
-            <div style={{ padding: '8px 16px', background: '#f6ffed', border: '1px solid #b7eb8f', borderRadius: '6px' }}>
-              <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: 2 }}>快照名称</Text>
-              <Text strong style={{ fontSize: '16px' }}>
+        <div style={{ marginBottom: 16, padding: '0 4px' }}>
+          <Space split={<Divider type="vertical" style={{ height: 14, borderColor: '#e8e8e8' }} />} size="middle">
+            <Space size={4}>
+              <Text type="secondary" style={{ fontSize: '13px' }}>地图:</Text>
+              <Text strong style={{ fontSize: '13px' }}>
                 {previewSnapshot?.name.replace(new RegExp(`\\s+${previewSnapshot?.version}$`), '')}
               </Text>
-            </div>
-            <div style={{ padding: '8px 16px', background: '#fff7e6', border: '1px solid #ffd591', borderRadius: '6px' }}>
-              <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: 2 }}>版本标识</Text>
-              <Tag color="orange" style={{ margin: 0, fontWeight: 600 }}>{previewSnapshot?.version}</Tag>
-            </div>
-            <div style={{ padding: '8px 16px', background: '#e6f7ff', border: '1px solid #91d5ff', borderRadius: '6px' }}>
-              <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: 2 }}>导出时间</Text>
-              <Text strong style={{ fontSize: '16px' }}>{previewSnapshot?.publishedAt ? new Date(previewSnapshot.publishedAt).toLocaleString() : '未知'}</Text>
-            </div>
-            <div style={{ padding: '8px 16px', background: '#f9f0ff', border: '1px solid #d3adf7', borderRadius: '6px' }}>
-              <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: 2 }}>配置规模</Text>
-              <Text strong style={{ fontSize: '16px' }}>{previewSnapshot?.slots?.length || 0} 个槽位</Text>
-            </div>
+            </Space>
+            <Space size={4}>
+              <Text type="secondary" style={{ fontSize: '13px' }}>版本:</Text>
+              <Tag color="orange" style={{ margin: 0, fontSize: '11px', lineHeight: '18px', height: '20px' }}>{previewSnapshot?.version}</Tag>
+            </Space>
+            <Space size={4}>
+              <ClockCircleOutlined style={{ color: '#bfbfbf', fontSize: '13px' }} />
+              <Text type="secondary" style={{ fontSize: '13px' }}>{previewSnapshot?.publishedAt ? new Date(previewSnapshot.publishedAt).toLocaleString() : '未知'}</Text>
+            </Space>
+            <Space size={4}>
+              <BuildOutlined style={{ color: '#bfbfbf', fontSize: '13px' }} />
+              <Text type="secondary" style={{ fontSize: '13px' }}>{previewSnapshot?.slots?.length || 0} 个地块</Text>
+            </Space>
           </Space>
         </div>
         {renderPreviewCanvas()}
