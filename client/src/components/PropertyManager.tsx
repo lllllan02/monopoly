@@ -563,7 +563,7 @@ const PropertyManager: React.FC = () => {
               </Col>
             </Row>
             
-            <Form.Item name="themeId" label={<span style={{ fontWeight: 600, color: '#595959' }}>所属游戏主题</span>} rules={[{ required: true }]}>
+                <Form.Item name="themeId" label={<span style={{ fontWeight: 600, color: '#595959' }}>所属游戏主题</span>} rules={[{ required: true }]}>
                   <Select 
                     size="large" 
                     placeholder="选择地块所属主题" 

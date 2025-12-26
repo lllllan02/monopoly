@@ -408,6 +408,27 @@ const MapManager: React.FC = () => {
                     e.currentTarget.style.transform = 'translateY(0)';
                   }}
                 >
+                  {/* 价格标签 - 左上角 */}
+                  {item.detail?.price && (
+                    <div style={{ 
+                      position: 'absolute', 
+                      top: 4, 
+                      left: 4, 
+                      fontSize: '9px', 
+                      color: headerColor,
+                      background: 'rgba(255,255,255,0.9)',
+                      padding: '0 4px',
+                      borderRadius: '2px',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                      fontWeight: 'bold',
+                      zIndex: 15,
+                      border: `1px solid ${headerColor}30`,
+                      pointerEvents: 'none'
+                    }}>
+                      ${item.detail.price.toLocaleString()}
+                    </div>
+                  )}
+
                   {/* Logo 区域 */}
                   <div style={{ 
                     flex: 1, 
@@ -598,10 +619,15 @@ const MapManager: React.FC = () => {
     };
 
     const config = typeConfig[slot.type] || typeConfig.empty;
-    // 获取关联地块的颜色（如果是普通土地）
+    // 获取关联地块的详细信息
     const prop = properties.find(p => p.id === slot.propertyId);
     const rentLevel = rentLevels.find(r => r.id === prop?.rentLevelId);
-    const headerColor = rentLevel?.color || config.color;
+    
+    // 颜色优先级：收益等级颜色 > 地块类型颜色 > 配置默认颜色
+    const typeColors: Record<string, string> = {
+      start: '#52c41a', jail: '#ff4d4f', fate: '#722ed1', chance: '#fa8c16', station: '#595959', utility: '#faad14', property: '#1890ff', normal: '#1890ff'
+    };
+    const headerColor = rentLevel?.color || (prop ? typeColors[prop.type] : config.color);
     const isCustomProperty = slot.type === 'property';
     
     return (
@@ -624,7 +650,7 @@ const MapManager: React.FC = () => {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'center',
+          justifyContent: 'space-between',
           background: `linear-gradient(${headerColor}15, ${headerColor}15), #fff`,
           position: 'absolute',
           left: (slot.x || 0) - originX,
@@ -633,23 +659,32 @@ const MapManager: React.FC = () => {
           transition: 'all 0.2s ease',
           cursor: 'move',
           zIndex: 10,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.04)',
           overflow: 'hidden',
-          border: '1.5px solid rgba(0,0,0,0.15)' // 更加突出的地块边界
+          border: '1.5px solid rgba(0,0,0,0.15)',
+          flexShrink: 0
         }}
       >
-        {/* 序号标记 */}
+        {/* 价格标签 - 左上角 */}
+        {prop?.price && (
             <div style={{ 
-          fontSize: '9px', 
-          color: 'rgba(0,0,0,0.3)', 
-          position: 'absolute', 
-          top: 2, 
-          left: 4, 
-          zIndex: 6,
-          fontWeight: 600
-        }}>
-          #{index + 1}
+            position: 'absolute', 
+            top: 4, 
+            left: 4, 
+            fontSize: '9px', 
+            color: headerColor, 
+            fontWeight: 'bold',
+            background: 'rgba(255,255,255,0.9)',
+            padding: '0 4px',
+            borderRadius: '2px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            border: `1px solid ${headerColor}30`,
+            zIndex: 15,
+            pointerEvents: 'none'
+          }}>
+            ${prop.price.toLocaleString()}
             </div>
+        )}
 
         {/* 删除按钮 */}
             <Button 
@@ -664,7 +699,7 @@ const MapManager: React.FC = () => {
             height: '18px', 
             width: '18px', 
             minWidth: '18px', 
-            background: 'rgba(0,0,0,0.05)', 
+            background: 'rgba(255,255,255,0.7)', 
             borderRadius: '3px', 
             padding: 0,
             zIndex: 20,
@@ -682,70 +717,68 @@ const MapManager: React.FC = () => {
           }}
         />
 
-        {/* 主体 Logo 区域 - 撑满 */}
+        {/* Logo 区域 */}
         <div style={{ 
           flex: 1, 
           width: '100%', 
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center',
-          padding: 0,
-          position: 'relative',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          padding: '4px',
+          zIndex: 1
         }}>
-          {!isCustomProperty && slot.icon ? (() => {
+          {slot.icon ? (() => {
             const iconValue = Array.isArray(slot.icon) ? slot.icon[0] : slot.icon;
             const isUrl = iconValue && (iconValue.startsWith('http') || iconValue.startsWith('/') || iconValue.startsWith('data:'));
             
-            const iconImgStyle: React.CSSProperties = {
-              width: '100%', 
+            const iconStyle: React.CSSProperties = {
+              width: '100%',
               height: '100%',
-              objectFit: 'cover',
-              pointerEvents: 'none'
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
             };
 
+            if (isUrl) {
+              return <img src={iconValue} style={{ ...iconStyle, objectFit: 'contain' }} alt="logo" />;
+            } else if (iconValue && iconValue.trim().startsWith('<svg')) {
+              return (
+                <div 
+                  style={iconStyle}
+                  dangerouslySetInnerHTML={{ __html: iconValue }}
+                />
+              );
+            }
             return (
-              <div style={{ width: '100%', height: '100%' }}>
-                {isUrl ? (
-                  <img src={iconValue} style={iconImgStyle} alt="logo" />
-                ) : iconValue && iconValue.trim().startsWith('<svg') ? (
-                  <div 
-                    style={{ ...iconImgStyle, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    dangerouslySetInnerHTML={{ __html: iconValue }}
-                  />
-                ) : (
-                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px' }}>
-                    {iconValue}
-                  </div>
-                )}
+              <div style={{ ...iconStyle, fontSize: '20px', color: '#bfbfbf', opacity: 0.3 }}>
+                {iconValue}
               </div>
             );
-          })() : (
-            !isCustomProperty && <div style={{ fontSize: '24px', opacity: 0.1 }}>{config.label[0]}</div>
-          )}
+          })() : null}
         </div>
 
-        {/* 底部名称浮层 */}
+        {/* 底部名称底色条 */}
         <div style={{ 
           width: '100%', 
-          height: '24px', 
+          height: '20px', 
           background: headerColor, 
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center',
-          zIndex: 5,
-          padding: '0 2px'
+          padding: '0 4px',
+          boxShadow: '0 -1px 2px rgba(0,0,0,0.1)',
+          zIndex: 5
         }}>
           <div style={{ 
-            fontSize: '11px', 
+            fontSize: '9px', 
             color: '#fff', 
             fontWeight: 'bold', 
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
-            maxWidth: '100%',
             textAlign: 'center',
-            textShadow: '0 1px 2px rgba(0,0,0,0.4)'
+            textShadow: '0 1px 2px rgba(0,0,0,0.2)'
           }}>
             {slot.name}
           </div>

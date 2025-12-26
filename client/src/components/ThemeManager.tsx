@@ -156,20 +156,20 @@ const ThemeManager: React.FC = () => {
               size={6} 
               className="clickable-stat"
               onClick={() => navigate('/admin/properties', { state: { themeId: record.id, tab: 'default' } })}
-            >
-              <BankOutlined style={{ color: '#722ed1', opacity: 0.6 }} /> 
+          >
+            <BankOutlined style={{ color: '#722ed1', opacity: 0.6 }} /> 
               <span style={{ color: '#8c8c8c' }}>内置地块:</span>
-              <Typography.Text strong style={{ color: '#722ed1' }}>{record.defaultTileCount}</Typography.Text>
-            </Space>
-            <Space 
+            <Typography.Text strong style={{ color: '#722ed1' }}>{record.defaultTileCount}</Typography.Text>
+          </Space>
+          <Space 
               size={6} 
-              className="clickable-stat"
-              onClick={() => navigate('/admin/properties', { state: { themeId: record.id, tab: 'custom' } })}
-            >
-              <BuildOutlined style={{ color: '#1890ff', opacity: 0.6 }} /> 
-              <span style={{ color: '#8c8c8c' }}>自定义:</span>
-              <Typography.Text strong style={{ color: '#1890ff' }}>{record.customTileCount}</Typography.Text>
-            </Space>
+            className="clickable-stat"
+            onClick={() => navigate('/admin/properties', { state: { themeId: record.id, tab: 'custom' } })}
+          >
+            <BuildOutlined style={{ color: '#1890ff', opacity: 0.6 }} /> 
+            <span style={{ color: '#8c8c8c' }}>自定义:</span>
+            <Typography.Text strong style={{ color: '#1890ff' }}>{record.customTileCount}</Typography.Text>
+          </Space>
           </Space>
 
           {/* 分隔符 */}
