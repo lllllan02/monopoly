@@ -520,16 +520,45 @@ const MapManager: React.FC = () => {
     
     if (currentMap) {
       let newSlots = [...currentMap.slots];
-      
+      const targetSlotIndex = newSlots.findIndex(s => s.x === x && s.y === y && s.type !== 'empty');
+
       if (sourceIndex !== '') {
         // 移动已有地块
         const idx = parseInt(sourceIndex);
+        if (targetSlotIndex !== -1 && targetSlotIndex !== idx) {
+          // 目标位置已有地块：执行交换位置
+          const originalX = newSlots[idx].x;
+          const originalY = newSlots[idx].y;
+          newSlots[targetSlotIndex] = { ...newSlots[targetSlotIndex], x: originalX, y: originalY };
+        }
         newSlots[idx] = { ...newSlots[idx], x, y };
       } else if (propId) {
-        // 新增地块：严格从 properties 匹配
+        // 新增地块：如果目标位置已有地块，尝试寻找最近的空位移动它
+        if (targetSlotIndex !== -1) {
+          // 简单逻辑：如果被占用了，寻找周围 8 个方向最近的空位
+          const directions = [
+            { dx: 1, dy: 0 }, { dx: -1, dy: 0 }, { dx: 0, dy: 1 }, { dx: 0, dy: -1 },
+            { dx: 1, dy: 1 }, { dx: 1, dy: -1 }, { dx: -1, dy: 1 }, { dx: -1, dy: -1 }
+          ];
+          
+          let foundEmpty = false;
+          for (let radius = 1; radius <= 3; radius++) {
+            for (const d of directions) {
+              const nx = x + d.dx * radius * GRID_SIZE;
+              const ny = y + d.dy * radius * GRID_SIZE;
+              if (!newSlots.some(s => s.x === nx && s.y === ny && s.type !== 'empty')) {
+                newSlots[targetSlotIndex] = { ...newSlots[targetSlotIndex], x: nx, y: ny };
+                foundEmpty = true;
+                break;
+              }
+            }
+            if (foundEmpty) break;
+          }
+        }
+
+        // 严格从 properties 匹配新增地块
         const prop = properties.find(p => p.id === propId);
         if (prop) {
-          // 映射地块类型到 MapSlot 要求的类型
           let slotType: any = prop.type;
           if (['normal', 'station', 'utility'].includes(prop.type)) {
             slotType = 'property';
@@ -543,7 +572,6 @@ const MapManager: React.FC = () => {
             name: prop.name,
             icon: prop.icon
           };
-          // 过滤掉 empty 占位符
           newSlots = newSlots.filter(s => s.type !== 'empty');
           newSlots.push(newSlot);
         }
