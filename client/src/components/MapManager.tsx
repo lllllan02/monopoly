@@ -48,6 +48,56 @@ const MapManager: React.FC = () => {
   const [libraryFilter, setLibraryFilter] = useState<'builtin' | 'custom'>('builtin');
   const [secondaryFilter, setSecondaryFilter] = useState<string>('all');
 
+  // 画板变换状态
+  const [zoom, setZoom] = useState(1);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
+  const [isSpacePressed, setIsSpacePressed] = useState(false);
+
+  // 监听空格键状态
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && document.activeElement?.tagName !== 'INPUT') {
+        setIsSpacePressed(true);
+        e.preventDefault();
+      }
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') setIsSpacePressed(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
+
+  // 优化平移逻辑：使用 window 监听器确保拖动顺滑
+  useEffect(() => {
+    if (!isPanning) return;
+
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      const dx = e.clientX - lastMousePos.x;
+      const dy = e.clientY - lastMousePos.y;
+      setPanOffset(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+      setLastMousePos({ x: e.clientX, y: e.clientY });
+    };
+
+    const handleGlobalMouseUp = () => {
+      setIsPanning(false);
+    };
+
+    window.addEventListener('mousemove', handleGlobalMouseMove);
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    
+    return () => {
+      window.removeEventListener('mousemove', handleGlobalMouseMove);
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [isPanning, lastMousePos]);
+
   // 未保存变更警告逻辑
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -452,13 +502,14 @@ const MapManager: React.FC = () => {
     const container = e.currentTarget as HTMLDivElement;
     const rect = container.getBoundingClientRect();
     
-    // 获取拖拽起始时的偏移量（鼠标点击位置相对于地块左上角的距离）
-    const offsetX = parseInt(e.dataTransfer.getData('offsetX') || '0');
-    const offsetY = parseInt(e.dataTransfer.getData('offsetY') || '0');
+    // 获取拖拽起始时的偏移量（此时已统一为逻辑网格单位）
+    const offsetX = parseFloat(e.dataTransfer.getData('offsetX') || '0');
+    const offsetY = parseFloat(e.dataTransfer.getData('offsetY') || '0');
 
-    // 计算放置位置：(鼠标当前坐标 - 容器左上角坐标 + 逻辑起点坐标 - 内部偏移量)
-    const rawX = (e.clientX - rect.left) + originX - offsetX;
-    const rawY = (e.clientY - rect.top) + originY - offsetY;
+    // 精准计算放置的世界坐标：
+    // (鼠标屏幕坐标 - 画板容器屏幕坐标) / 缩放比例 + 逻辑原点 - 点击时的偏移量
+    const rawX = (e.clientX - rect.left) / zoom + originX - offsetX;
+    const rawY = (e.clientY - rect.top) / zoom + originY - offsetY;
 
     // 吸附到网格
     const x = Math.round(rawX / GRID_SIZE) * GRID_SIZE;
@@ -528,11 +579,13 @@ const MapManager: React.FC = () => {
     return (
       <div 
         key={index}
+        data-slot="true"
         draggable
         onDragStart={(e) => {
           const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-          e.dataTransfer.setData('offsetX', (e.clientX - rect.left).toString());
-          e.dataTransfer.setData('offsetY', (e.clientY - rect.top).toString());
+          // 将屏幕像素偏移转换为世界坐标系下的偏移（即不随缩放改变的网格单位）
+          e.dataTransfer.setData('offsetX', ((e.clientX - rect.left) / zoom).toString());
+          e.dataTransfer.setData('offsetY', ((e.clientY - rect.top) / zoom).toString());
           e.dataTransfer.setData('sourceIndex', index.toString());
           e.dataTransfer.setData('slotType', slot.type);
         }}
@@ -675,8 +728,13 @@ const MapManager: React.FC = () => {
 
   if (isEditorOpen) {
     return (
-      <Layout style={{ height: 'calc(100vh - 110px)', background: '#fff' }}>
-        <Sider width={280} theme="light" style={{ borderRight: '1px solid #f0f0f0', overflow: 'auto' }}>
+      <Layout style={{ 
+        height: 'calc(100vh - 112px)', // 100vh - Header(64) - ContentMargin(24*2)
+        background: '#fff',
+        margin: -24, // 抵消父容器的 padding
+        overflow: 'hidden'
+      }}>
+        <Sider width={280} theme="light" style={{ borderRight: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column' }}>
           {renderLibrary()}
         </Sider>
         <Content style={{ position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -696,6 +754,14 @@ const MapManager: React.FC = () => {
                   撤销
                 </Button>
                 <Button 
+                  onClick={() => {
+                    setZoom(1);
+                    setPanOffset({ x: 0, y: 0 });
+                  }}
+                >
+                  重置视角
+                </Button>
+                <Button 
                   type="primary" 
                   icon={<SaveOutlined />} 
                   onClick={handleSaveEditor}
@@ -710,18 +776,74 @@ const MapManager: React.FC = () => {
           <div 
             style={{ 
               flex: 1,
-              overflow: 'auto',
-              padding: '100px', // 给予四周足够的空间
-              background: '#f0f2f5'
+              overflow: 'hidden',
+              background: '#f0f2f5',
+              cursor: isPanning ? 'grabbing' : (isSpacePressed ? 'grab' : 'auto'),
+              position: 'relative'
+            }}
+            onWheel={(e) => {
+              e.preventDefault();
+              // 缩放逻辑：改为二指上下移动 (deltaY) 触发
+              if (Math.abs(e.deltaY) > 2) { // 增加微小阈值防止过于灵敏
+                const delta = e.deltaY > 0 ? -0.05 : 0.05;
+                const newZoom = Math.min(Math.max(zoom + delta, 0.2), 3);
+                setZoom(newZoom);
+              }
+            }}
+            onMouseDown={(e) => {
+              // 检查是否点击在地块上
+              const isSlot = (e.target as HTMLElement).closest('[data-slot="true"]');
+              if (isSlot && e.button === 0 && !e.altKey && !isSpacePressed) {
+                return; // 如果点击的是地块且没有按住辅助键，则让位给地块拖动逻辑
+              }
+
+              // 检查是否点击在背景上
+              const isBg = e.target === e.currentTarget || (e.target as HTMLElement).closest('[data-canvas="true"]');
+              
+              // 触发平移的条件：点击背景，或者使用了辅助键（右键、中键、Alt、空格）
+              if (isBg || e.button === 1 || e.button === 2 || (e.button === 0 && (e.altKey || isSpacePressed))) { 
+                setIsPanning(true);
+                setLastMousePos({ x: e.clientX, y: e.clientY });
+                // 防止右键菜单弹出
+                if (e.button === 2) {
+                  const handleContextMenu = (ce: MouseEvent) => {
+                    ce.preventDefault();
+                    window.removeEventListener('contextmenu', handleContextMenu);
+                  };
+                  window.addEventListener('contextmenu', handleContextMenu);
+                }
+              }
             }}
           >
+            {/* 缩放倍率显示 */}
+          <div style={{ 
+              position: 'absolute', 
+              bottom: 16, 
+              right: 16, 
+              zIndex: 30, 
+              background: 'rgba(255,255,255,0.8)', 
+              padding: '4px 8px', 
+              borderRadius: '4px',
+              fontSize: '12px',
+              color: '#8c8c8c',
+              border: '1px solid #d9d9d9',
+              pointerEvents: 'none'
+            }}>
+              缩放: {Math.round(zoom * 100)}% | 二指上下缩放，三指移动地图
+            </div>
+
             <div 
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
+              data-canvas="true"
               style={{ 
                 width: canvasWidth,
                 height: canvasHeight,
-                position: 'relative',
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
+                transformOrigin: '0 0',
                 backgroundColor: '#fff',
                 backgroundImage: `
                   linear-gradient(to right, rgba(0,0,0,0.15) 1px, transparent 1px),
