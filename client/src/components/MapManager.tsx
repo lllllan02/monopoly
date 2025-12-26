@@ -258,6 +258,91 @@ const MapManager: React.FC = () => {
     return newOrder;
   };
 
+  // 辅助函数：路径全局连通性自愈系统
+  const healPath = (slots: MapSlot[]) => {
+    const activeSlots = slots.filter(s => s && s.type !== 'empty');
+    const startSlot = activeSlots.find(s => s.type === 'start');
+    if (!startSlot) return slots;
+
+    const visited = new Set<string>();
+    let cursor: MapSlot | undefined = startSlot;
+    const startId = cursor.id;
+    let iterations = 0;
+    const MAX_PATH_LENGTH = 100;
+
+    // 每次扫描前，先备份一份 slots 用于查找，避免在循环中直接修改导致查找不到
+    const findSlot = (id: string) => slots.find(s => s && s.id === id);
+
+    while (cursor && iterations < MAX_PATH_LENGTH) {
+      iterations++;
+      visited.add(cursor.id);
+      
+      // 尝试寻找下一个逻辑连接
+      let next: MapSlot | undefined = cursor.nextSlotId ? findSlot(cursor.nextSlotId) : undefined;
+      
+      // 如果物理上断开了，则强制清除逻辑连接
+      if (next) {
+        const dx = Math.abs((next.x || 0) - (cursor.x || 0));
+        const dy = Math.abs((next.y || 0) - (cursor.y || 0));
+        const isAdjacent = (Math.abs(dx - GRID_SIZE) < 10 && dy < 10) || (Math.abs(dy - GRID_SIZE) < 10 && dx < 10);
+        if (!isAdjacent) {
+          const idx = slots.findIndex(s => s && s.id === cursor!.id);
+          if (idx !== -1) {
+            slots[idx] = { ...slots[idx], nextSlotId: undefined };
+            cursor = slots[idx]; // 同步最新的 cursor
+          }
+          next = undefined;
+        }
+      }
+      
+      // 如果当前没有逻辑出口，尝试寻找合适的邻居自动握手
+      if (!next) {
+        const neighbors = activeSlots.filter(s => {
+          if (!s) return false;
+          const dx = Math.abs((s.x || 0) - (cursor!.x || 0));
+          const dy = Math.abs((s.y || 0) - (cursor!.y || 0));
+          const isAdj = (Math.abs(dx - GRID_SIZE) < 10 && dy < 10) || (Math.abs(dy - GRID_SIZE) < 10 && dx < 10);
+          
+          if (!isAdj) return false;
+
+          // 特殊规则：允许连回起点形成闭合回路（至少需要3个地块才能成环）
+          if (s.type === 'start' && visited.size >= 3) return true;
+          
+          // 排除已经访问过的节点
+          return !visited.has(s.id);
+        });
+        
+        let selectedNeighbor = null;
+        if (neighbors.length === 1) {
+          selectedNeighbor = neighbors[0];
+        } else if (neighbors.length > 1) {
+          // 如果有多个邻居，优先选择起点以形成闭环
+          const startNeighbor = neighbors.find(n => n.type === 'start');
+          if (startNeighbor) {
+            selectedNeighbor = startNeighbor;
+          }
+        }
+
+        if (selectedNeighbor) {
+          const idx = slots.findIndex(s => s && s.id === cursor!.id);
+          if (idx !== -1) {
+            slots[idx] = { ...slots[idx], nextSlotId: selectedNeighbor.id };
+            next = selectedNeighbor;
+            cursor = slots[idx]; // 同步最新的 cursor
+          }
+        }
+      }
+      
+      // 步进到下一格（如果回到起点，则终止循环）
+      if (next && next.id !== startId && !visited.has(next.id)) {
+        cursor = next;
+      } else {
+        cursor = undefined;
+      }
+    }
+    return slots;
+  };
+
   const handleOpenEditor = (map: Map) => {
     // 确保所有地块都有唯一 ID（如果缺失则补齐）
     const mapCopy = JSON.parse(JSON.stringify(map));
@@ -619,6 +704,7 @@ const MapManager: React.FC = () => {
 
     // 精准计算放置的世界坐标：
     // (鼠标屏幕坐标 - 画板容器屏幕坐标) / 缩放比例 + 逻辑原点 - 点击时的偏移量
+    // 注意：rect.left 已经包含了 panOffset.x，所以不需要再次减去 panOffset
     const rawX = (e.clientX - rect.left) / zoom + originX - offsetX;
     const rawY = (e.clientY - rect.top) / zoom + originY - offsetY;
 
@@ -690,88 +776,8 @@ const MapManager: React.FC = () => {
         }
       }
 
-      // --- 路径全局连通性自愈系统 ---
-      let iterations = 0;
-      const MAX_PATH_LENGTH = 100;
-      
-      const findSlotInNewSlots = (id: string) => newSlots.find(s => s && s.id === id);
-      const getStartSlot = () => newSlots.find(s => s && s.type === 'start');
-
-      const visited = new Set<string>();
-      let cursor = getStartSlot();
-      const startId = cursor?.id;
-      
-      while (cursor && iterations < MAX_PATH_LENGTH) {
-        iterations++;
-        visited.add(cursor.id);
-        
-        // 尝试寻找下一个逻辑连接
-        let next: MapSlot | undefined = cursor.nextSlotId ? findSlotInNewSlots(cursor.nextSlotId) : undefined;
-        
-        // 如果物理上断开了，则强制清除逻辑连接
-        if (next) {
-          const dx = Math.abs((next.x || 0) - (cursor.x || 0));
-          const dy = Math.abs((next.y || 0) - (cursor.y || 0));
-          const isAdjacent = (Math.abs(dx - GRID_SIZE) < 10 && dy < 10) || (Math.abs(dy - GRID_SIZE) < 10 && dx < 10);
-          if (!isAdjacent) {
-            const idx = newSlots.findIndex(s => s && s.id === cursor!.id);
-            if (idx !== -1) {
-              newSlots[idx] = { ...newSlots[idx], nextSlotId: undefined };
-              // 更新 cursor 以反映最新的 nextSlotId
-              cursor = newSlots[idx];
-            }
-            next = undefined;
-          }
-        }
-        
-        // 如果当前没有逻辑出口，尝试寻找合适的邻居自动握手
-        if (!next) {
-          const activeSlots = newSlots.filter(s => s && s.type !== 'empty');
-          const neighbors = activeSlots.filter(s => {
-            if (!s) return false;
-            const dx = Math.abs((s.x || 0) - (cursor!.x || 0));
-            const dy = Math.abs((s.y || 0) - (cursor!.y || 0));
-            const isAdj = (Math.abs(dx - GRID_SIZE) < 10 && dy < 10) || (Math.abs(dy - GRID_SIZE) < 10 && dx < 10);
-            
-            if (!isAdj) return false;
-
-            // 特殊规则：允许连回起点形成闭合回路（至少需要3个地块才能成环）
-            if (s.type === 'start' && visited.size >= 3) return true;
-            
-            // 排除已经访问过的节点
-            return !visited.has(s.id);
-          });
-          
-          let selectedNeighbor = null;
-          if (neighbors.length === 1) {
-            selectedNeighbor = neighbors[0];
-          } else if (neighbors.length > 1) {
-            // 如果有多个邻居，优先选择起点以形成闭环
-            const startNeighbor = neighbors.find(n => n.type === 'start');
-            if (startNeighbor) {
-              selectedNeighbor = startNeighbor;
-            }
-          }
-
-          if (selectedNeighbor) {
-            const idx = newSlots.findIndex(s => s && s.id === cursor!.id);
-            if (idx !== -1) {
-              newSlots[idx] = { ...newSlots[idx], nextSlotId: selectedNeighbor.id };
-              next = selectedNeighbor;
-              cursor = newSlots[idx];
-            }
-          }
-        }
-        
-        // 步进到下一格（如果回到起点，则终止循环）
-        if (next && next.id !== startId && !visited.has(next.id)) {
-          cursor = next;
-        } else {
-          cursor = undefined;
-        }
-      }
-
-      updateMapWithHistory({ ...currentMap, slots: reorderSlots(newSlots) });
+      // 执行路径自愈并记录历史
+      updateMapWithHistory({ ...currentMap, slots: reorderSlots(healPath(newSlots)) });
     }
   };
 
@@ -801,7 +807,10 @@ const MapManager: React.FC = () => {
     const typeColors: Record<string, string> = {
       start: '#52c41a', jail: '#ff4d4f', fate: '#722ed1', chance: '#fa8c16', station: '#595959', utility: '#faad14', property: '#1890ff', normal: '#1890ff'
     };
-    const headerColor = rentLevel?.color || (prop ? typeColors[prop.type] : config.color) || '#d9d9d9';
+    
+    // 如果没有关联地块，且不是特殊内置类型，则判定为手动双击添加的“空白格”
+    const isBlankManual = !slot.propertyId && slot.type === 'property';
+    const headerColor = isBlankManual ? '#d9d9d9' : (rentLevel?.color || (prop ? typeColors[prop.type] : config.color) || '#d9d9d9');
     
     return (
       <div 
@@ -828,7 +837,7 @@ const MapManager: React.FC = () => {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'space-between',
-          background: `linear-gradient(${headerColor}15, ${headerColor}15), #fff`,
+          background: isBlankManual ? '#f5f5f5' : `linear-gradient(${headerColor}15, ${headerColor}15), #fff`,
           position: 'absolute',
           left: (slot.x || 0) - originX + 4,
           top: (slot.y || 0) - originY + 4,
@@ -840,12 +849,14 @@ const MapManager: React.FC = () => {
             ? `0 0 0 3px #1890ff, 0 4px 12px rgba(0,0,0,0.2)` 
             : '0 2px 4px rgba(0,0,0,0.04)',
           overflow: 'hidden',
-          border: selectedSlotIndex === index ? 'none' : '1.5px solid rgba(0,0,0,0.15)',
+          border: isBlankManual 
+            ? (selectedSlotIndex === index ? 'none' : '1.5px dashed rgba(0,0,0,0.1)')
+            : (selectedSlotIndex === index ? 'none' : '1.5px solid rgba(0,0,0,0.15)'),
           flexShrink: 0
         }}
       >
         {/* 价格标签 - 左上角 */}
-        {prop?.price && (
+        {!isBlankManual && prop?.price && (
             <div style={{ 
             position: 'absolute', 
             top: 4, 
@@ -896,7 +907,8 @@ const MapManager: React.FC = () => {
             const newSlots = currentMap.slots
               .filter((_, idx) => idx !== index)
               .map(s => s && s.nextSlotId === deletedSlot.id ? { ...s, nextSlotId: undefined } : s);
-            updateMapWithHistory({ ...currentMap, slots: newSlots });
+            // 关键修复：删除地块后重新执行路径自愈
+            updateMapWithHistory({ ...currentMap, slots: reorderSlots(healPath(newSlots)) });
           }}
         />
 
@@ -942,30 +954,32 @@ const MapManager: React.FC = () => {
         </div>
 
         {/* 底部名称底色条 */}
-        <div style={{ 
-          width: '100%', 
-          height: '20px', 
-          background: headerColor, 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center',
-          padding: '0 4px',
-          boxShadow: '0 -1px 2px rgba(0,0,0,0.1)',
-          zIndex: 5
-        }}>
+        {!isBlankManual && (
           <div style={{ 
-            fontSize: '9px', 
-            color: '#fff', 
-            fontWeight: 'bold', 
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            textAlign: 'center',
-            textShadow: '0 1px 2px rgba(0,0,0,0.2)'
+            width: '100%', 
+            height: '20px', 
+            background: headerColor, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            padding: '0 4px',
+            boxShadow: '0 -1px 2px rgba(0,0,0,0.1)',
+            zIndex: 5
           }}>
-            {slot.name}
+            <div style={{ 
+              fontSize: '9px', 
+              color: '#fff', 
+              fontWeight: 'bold', 
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              textAlign: 'center',
+              textShadow: '0 1px 2px rgba(0,0,0,0.2)'
+            }}>
+              {slot.name}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     );
   };
@@ -1278,6 +1292,41 @@ const MapManager: React.FC = () => {
             <div 
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
+              onDoubleClick={(e) => {
+                const target = e.target as HTMLElement;
+                // 仅当双击的是画布背景时触发
+                if (target.closest('[data-slot="true"]')) return;
+                
+                const container = e.currentTarget as HTMLDivElement;
+                const rect = container.getBoundingClientRect();
+                
+                // 计算双击位置的世界坐标 (rect.left 已经包含 panOffset.x)
+                const rawX = (e.clientX - rect.left) / zoom + originX;
+                const rawY = (e.clientY - rect.top) / zoom + originY;
+                
+                // 吸附到网格中心：关键修复，减去半个网格大小以实现中心对齐
+                const x = Math.round((rawX - GRID_SIZE / 2) / GRID_SIZE) * GRID_SIZE;
+                const y = Math.round((rawY - GRID_SIZE / 2) / GRID_SIZE) * GRID_SIZE;
+                
+                if (currentMap) {
+                  // 检查该位置是否已经有地块
+                  const exists = currentMap.slots.some(s => s && s.x === x && s.y === y && s.type !== 'empty');
+                  if (exists) return;
+
+                  const newId = `slot-blank-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                  const newSlot: MapSlot = { 
+                    id: newId,
+                    x, 
+                    y, 
+                    type: 'property',
+                    name: '空白格'
+                  };
+                  
+                  const newSlots = [...currentMap.slots.filter(s => s && s.type !== 'empty'), newSlot];
+                  // 关键修复：新增地块时立即执行路径评估
+                  updateMapWithHistory({ ...currentMap, slots: reorderSlots(healPath(newSlots)) });
+                }
+              }}
               onClick={() => setSelectedSlotIndex(null)}
               data-canvas="true"
               style={{ 
