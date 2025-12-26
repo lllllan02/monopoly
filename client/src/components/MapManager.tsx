@@ -14,7 +14,6 @@ import {
   RocketOutlined,
   SaveOutlined,
   ArrowLeftOutlined,
-  DragOutlined,
   UndoOutlined,
   FilterOutlined,
   InfoCircleOutlined
@@ -306,11 +305,20 @@ const MapManager: React.FC = () => {
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: `repeat(3, ${GRID_SIZE}px)`, 
+            gap: '8px', 
+            justifyContent: 'center' 
+          }}>
             {filteredItems.length > 0 ? filteredItems.map((item) => {
-              const isProperty = item.category === 'custom';
               const rentLevel = rentLevels.find(r => r.id === item.detail?.rentLevelId);
               
+              const typeColors: Record<string, string> = {
+                start: '#52c41a', jail: '#ff4d4f', fate: '#722ed1', chance: '#fa8c16', station: '#595959', utility: '#faad14', property: '#1890ff'
+              };
+              const headerColor = rentLevel?.color || typeColors[item.type] || '#1890ff';
+
               return (
                 <div
                   key={`${item.propertyId}`}
@@ -324,53 +332,94 @@ const MapManager: React.FC = () => {
               }}
               style={{
                     cursor: 'grab', 
-                    border: '1px solid #f0f0f0',
-                background: '#fff',
-                borderRadius: '6px',
-                    padding: '8px 12px',
-                display: 'flex',
-                alignItems: 'center',
-                    gap: '12px',
-                    transition: 'all 0.2s',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.borderColor = '#1890ff'}
-                  onMouseLeave={(e) => e.currentTarget.style.borderColor = '#f0f0f0'}
-                >
-                  <div style={{ 
-                    width: '28px', 
-                    height: '28px', 
-                    background: isProperty ? (rentLevel?.color || '#f5f5f5') : '#f6ffed',
+                    width: GRID_SIZE,
+                    height: GRID_SIZE,
+                border: '1px solid #f0f0f0',
+                    background: `linear-gradient(${headerColor}15, ${headerColor}15), #fff`,
                     borderRadius: '4px',
-                    display: 'flex',
-                    alignItems: 'center',
+                display: 'flex',
+                    flexDirection: 'column',
+                alignItems: 'center',
+                    justifyContent: 'space-between',
+                    transition: 'all 0.2s',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.04)',
+                    overflow: 'hidden',
+                    position: 'relative',
+                    flexShrink: 0
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = headerColor;
+                    e.currentTarget.style.boxShadow = `0 4px 12px ${headerColor}20`;
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = '#f0f0f0';
+                    e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.04)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                >
+                  {/* Logo 区域 */}
+                  <div style={{ 
+                    flex: 1, 
+                    width: '100%', 
+                    display: 'flex', 
+                    alignItems: 'center', 
                     justifyContent: 'center',
-                    fontSize: '16px',
-                    flexShrink: 0,
-                    overflow: 'hidden'
+                    overflow: 'hidden',
+                    padding: '4px'
                   }}>
                     {(() => {
                       const iconValue = Array.isArray(item.detail?.icon) ? item.detail?.icon[0] : item.detail?.icon;
                       const isUrl = iconValue && (iconValue.startsWith('http') || iconValue.startsWith('/') || iconValue.startsWith('data:'));
-                      if (isUrl) return <img src={iconValue} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="logo" />;
-                      return iconValue || <DragOutlined style={{ fontSize: '12px', color: '#bfbfbf' }} />;
+                      
+                      const iconStyle: React.CSSProperties = {
+                        width: '100%',
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      };
+
+                      if (isUrl) {
+                        return <img src={iconValue} style={{ ...iconStyle, objectFit: 'contain' }} alt="logo" />;
+                      } else if (iconValue && iconValue.trim().startsWith('<svg')) {
+                        return (
+                          <div 
+                            style={iconStyle}
+                            dangerouslySetInnerHTML={{ __html: iconValue }}
+                          />
+                        );
+                      }
+                      return (
+                        <div style={{ ...iconStyle, fontSize: '20px', color: '#bfbfbf', opacity: 0.3 }}>
+                          {iconValue}
+                        </div>
+                      );
                     })()}
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Text strong style={{ fontSize: '13px' }}>{item.name}</Text>
-                      {isProperty && rentLevel && (
-                        <div style={{ 
-                          fontSize: '10px', 
-                          padding: '0 6px', 
-                          background: `${rentLevel.color}15`, 
-                          color: rentLevel.color,
-                          borderRadius: '10px',
-                          border: `1px solid ${rentLevel.color}30`
-                        }}>
-                          {rentLevel.name}
-                        </div>
-                      )}
+                  
+                  {/* 名称底色条 */}
+                  <div style={{ 
+                    width: '100%', 
+                    height: '20px', 
+                    background: headerColor, 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    padding: '0 4px',
+                    boxShadow: '0 -1px 2px rgba(0,0,0,0.1)'
+                  }}>
+                    <div style={{ 
+                      fontSize: '9px', 
+                      color: '#fff', 
+                      fontWeight: 'bold', 
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      textAlign: 'center',
+                      textShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                    }}>
+                      {item.name}
                     </div>
                   </div>
                 </div>
@@ -495,7 +544,7 @@ const MapManager: React.FC = () => {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          background: '#fff',
+          background: `linear-gradient(${headerColor}15, ${headerColor}15), #fff`,
           position: 'absolute',
           left: (slot.x || 0) - originX,
           top: (slot.y || 0) - originY,
