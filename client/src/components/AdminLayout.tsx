@@ -8,7 +8,8 @@ import {
   IdcardOutlined,
   LogoutOutlined,
   PercentageOutlined,
-  RocketOutlined
+  RocketOutlined,
+  CloudServerOutlined
 } from '@ant-design/icons';
 
 const { Header, Content, Sider } = Layout;
@@ -48,6 +49,11 @@ const AdminLayout: React.FC = () => {
       key: '/admin/maps',
       icon: <EnvironmentOutlined />,
       label: '地图设计',
+    },
+    {
+      key: '/admin/snapshots',
+      icon: <CloudServerOutlined />,
+      label: '游玩快照',
     }
   ];
 

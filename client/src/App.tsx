@@ -7,6 +7,7 @@ import ThemeManager from './components/ThemeManager';
 import EconomicManager from './components/EconomicManager';
 import MapManager from './components/MapManager';
 import CardManager from './components/CardManager';
+import SnapshotManager from './components/SnapshotManager';
 import './App.css';
 
 // alert('App is loading...');
@@ -74,6 +75,7 @@ function App() {
           <Route path="rent-levels" element={<EconomicManager />} />
           <Route path="themes" element={<ThemeManager />} />
           <Route path="maps" element={<MapManager />} />
+          <Route path="snapshots" element={<SnapshotManager />} />
           <Route path="cards" element={<CardManager />} />
         </Route>
 

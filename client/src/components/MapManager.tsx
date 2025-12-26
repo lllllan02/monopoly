@@ -17,17 +17,46 @@ import {
   ArrowRightOutlined,
   UndoOutlined,
   FilterOutlined,
-  InfoCircleOutlined
+  InfoCircleOutlined,
+  CloudUploadOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined
 } from '@ant-design/icons';
-import { type Map, type MapSlot, MapService } from '../services/MapService';
+import { type Map, type MapSlot, MapService, SnapshotService, type MapSnapshot } from '../services/MapService';
 import { type Theme, ThemeService } from '../services/ThemeService';
 import { type Property, PropertyService } from '../services/PropertyService';
 import { type RentLevel, RentLevelService } from '../services/RentLevelService';
+import { CardService } from '../services/CardService';
 
 const { Content, Sider } = Layout;
 const { Text, Title, Paragraph } = Typography;
 
 const GRID_SIZE = 80;
+
+const typeConfig: Record<string, { color: string, bg: string, label: string }> = {
+  empty: { color: '#d9d9d9', bg: '#fafafa', label: '空' },
+  property: { color: '#1890ff', bg: '#ffffff', label: '土地' },
+  station: { color: '#595959', bg: '#ffffff', label: '车站' },
+  utility: { color: '#faad14', bg: '#ffffff', label: '公用' },
+  start: { color: '#52c41a', bg: '#f6ffed', label: '起点' },
+  jail: { color: '#ff4d4f', bg: '#fff1f0', label: '监狱' },
+  fate: { color: '#722ed1', bg: '#f9f0ff', label: '命运' },
+  chance: { color: '#fa8c16', bg: '#fff7e6', label: '机会' },
+  tax: { color: '#8c8c8c', bg: '#f5f5f5', label: '税收' },
+  chest: { color: '#eb2f96', bg: '#fff0f6', label: '宝箱' }
+};
+
+const typeColors: Record<string, string> = {
+  start: '#52c41a',
+  jail: '#ff4d4f',
+  fate: '#722ed1',
+  chance: '#fa8c16',
+  station: '#595959',
+  utility: '#faad14',
+  property: '#1890ff',
+  tax: '#8c8c8c',
+  chest: '#eb2f96'
+};
 
 const MapManager: React.FC = () => {
   const { message, modal } = App.useApp();
@@ -36,6 +65,7 @@ const MapManager: React.FC = () => {
   const [themes, setThemes] = useState<Theme[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [rentLevels, setRentLevels] = useState<RentLevel[]>([]);
+  const [snapshots, setSnapshots] = useState<MapSnapshot[]>([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingMap, setEditingMap] = useState<Map | null>(null);
   const [activeThemeId, setActiveThemeId] = useState<string>('');
@@ -157,17 +187,19 @@ const MapManager: React.FC = () => {
 
   const fetchData = async () => {
     try {
-      const [mapsData, themesData, propsData, rentLevelsData] = await Promise.all([
+      const [mapsData, themesData, propsData, rentLevelsData, snapshotsData] = await Promise.all([
         MapService.getAll().catch(() => []),
         ThemeService.getAll().catch(() => []),
         PropertyService.getAll().catch(() => []),
-        RentLevelService.getAll().catch(() => [])
+        RentLevelService.getAll().catch(() => []),
+        SnapshotService.getAll().catch(() => [])
       ]);
       const fetchedMaps = Array.isArray(mapsData) ? mapsData : [];
       setMaps(fetchedMaps);
       setThemes(Array.isArray(themesData) ? themesData : []);
       setProperties(Array.isArray(propsData) ? propsData : []);
       setRentLevels(Array.isArray(rentLevelsData) ? rentLevelsData : []);
+      setSnapshots(Array.isArray(snapshotsData) ? snapshotsData : []);
       
       if (Array.isArray(themesData) && themesData.length > 0 && !activeThemeId) {
         setActiveThemeId(themesData[0].id);
@@ -261,7 +293,10 @@ const MapManager: React.FC = () => {
   // 辅助函数：路径全局连通性自愈系统
   const healPath = (slots: MapSlot[]) => {
     const activeSlots = slots.filter(s => s && s.type !== 'empty');
-    const startSlot = activeSlots.find(s => s.type === 'start');
+    const startSlot = activeSlots.find(s => {
+      const p = properties.find(prop => prop.id === s.propertyId);
+      return p ? p.type === 'start' : s.type === 'start';
+    });
     if (!startSlot) return slots;
 
     const visited = new Set<string>();
@@ -422,7 +457,7 @@ const MapManager: React.FC = () => {
     setIsSaving(true);
     try {
       await MapService.update(currentMap.id, currentMap);
-      message.success('地图保存成功');
+      message.success('保存成功（草稿已更新）');
       setHistory([]); // 保存后清空历史，消除未保存警告
       fetchData();
     } catch (error) {
@@ -430,6 +465,82 @@ const MapManager: React.FC = () => {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleExportSnapshot = async () => {
+    if (!currentMap) return;
+    
+    const mapSnapshots = snapshots.filter(s => s.mapId === currentMap.id);
+    const nextVersionNum = mapSnapshots.length + 1;
+    let versionStr = `v${nextVersionNum}`;
+
+    modal.confirm({
+      title: '导出独立游玩快照',
+      icon: <CloudUploadOutlined />,
+      content: (
+        <div style={{ marginTop: 16 }}>
+          <Space direction="vertical" style={{ width: '100%' }} size={12}>
+            <div>
+              <Text type="secondary" style={{ fontSize: '12px' }}>地图名称 (不可修改):</Text>
+              <Input value={currentMap.name} disabled style={{ marginTop: 4 }} />
+            </div>
+            <div>
+              <Text type="secondary" style={{ fontSize: '12px' }}>版本号 / 标识:</Text>
+              <Input 
+                defaultValue={versionStr} 
+                onChange={(e) => { versionStr = e.target.value; }}
+                placeholder="例如: v1 或 圣诞平衡版"
+                style={{ marginTop: 4 }}
+              />
+            </div>
+          </Space>
+        </div>
+      ),
+      okText: '确定导出',
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          const snapshotName = currentMap.name;
+          // ... 1. 准备核心元数据
+          const theme = themes.find(t => t.id === currentMap.themeId);
+          const snapshotProperties = properties.filter(p => p.themeId === currentMap.themeId || p.isDefault);
+          const snapshotRentLevels = rentLevels.filter(r => r.themeId === currentMap.themeId);
+          
+          const allCards = await CardService.getAll().catch(() => []);
+          const themeCards = allCards.filter(c => c.themeId === currentMap.themeId);
+
+          const redundantSlots = currentMap.slots.map(slot => {
+            const p = properties.find(prop => prop.id === slot.propertyId);
+            const rl = rentLevels.find(r => r.id === p?.rentLevelId);
+            return {
+              ...slot,
+              name: p?.name || slot.name,
+              icon: p?.icon || (slot as any).icon,
+              price: p?.price,
+              headerColor: rl?.color || (p ? typeColors[p.type] : typeConfig[slot.type || 'property']?.color)
+            };
+          });
+
+          await SnapshotService.save({
+            mapId: currentMap.id,
+            name: snapshotName,
+            version: versionStr,
+            themeId: currentMap.themeId,
+            theme,
+            rentLevels: snapshotRentLevels,
+            properties: snapshotProperties,
+            cards: themeCards,
+            slots: redundantSlots
+          });
+          
+          message.success('独立快照已导出');
+          fetchData();
+        } catch (error) {
+          console.error('Export error:', error);
+          message.error('导出快照失败');
+        }
+      }
+    });
   };
 
   // 渲染地块库（可拖动）
@@ -538,10 +649,6 @@ const MapManager: React.FC = () => {
           }}>
             {filteredItems.length > 0 ? filteredItems.map((item) => {
               const rentLevel = rentLevels.find(r => r.id === item.detail?.rentLevelId);
-              
-              const typeColors: Record<string, string> = {
-                start: '#52c41a', jail: '#ff4d4f', fate: '#722ed1', chance: '#fa8c16', station: '#595959', utility: '#faad14', property: '#1890ff'
-              };
               const headerColor = rentLevel?.color || typeColors[item.type] || '#1890ff';
 
               return (
@@ -756,20 +863,12 @@ const MapManager: React.FC = () => {
 
         const prop = properties.find(p => p.id === propId);
         if (prop) {
-          let slotType: any = prop.type;
-          if (['normal', 'station', 'utility'].includes(prop.type)) {
-            slotType = 'property';
-          }
-          
           const newId = `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
           const newSlot: MapSlot = { 
             id: newId,
             x, 
             y, 
-            type: slotType,
-            propertyId: prop.id,
-            name: prop.name,
-            icon: prop.icon
+            propertyId: prop.id
           };
           newSlots = newSlots.filter(s => s && s.type !== 'empty');
           newSlots.push(newSlot);
@@ -798,18 +897,21 @@ const MapManager: React.FC = () => {
       chance: { color: '#fa8c16', bg: '#fff7e6', label: '机会' }
     };
 
-    const config = typeConfig[slot.type] || typeConfig.empty;
     // 获取关联地块的详细信息
     const prop = properties.find(p => p.id === slot.propertyId);
     const rentLevel = rentLevels.find(r => r.id === prop?.rentLevelId);
+
+    // 确定展示类型：优先使用地块模型定义的类型
+    const effectiveType = prop ? (prop.type === 'normal' ? 'property' : prop.type) : (slot.type || 'property');
+    const config = typeConfig[effectiveType] || typeConfig.empty;
     
     // 颜色优先级：收益等级颜色 > 地块类型颜色 > 配置默认颜色
     const typeColors: Record<string, string> = {
       start: '#52c41a', jail: '#ff4d4f', fate: '#722ed1', chance: '#fa8c16', station: '#595959', utility: '#faad14', property: '#1890ff', normal: '#1890ff'
     };
     
-    // 如果没有关联地块，且不是特殊内置类型，则判定为手动双击添加的“空白格”
-    const isBlankManual = !slot.propertyId && slot.type === 'property';
+    // 如果没有关联地块，则判定为手动双击添加的“空白格”
+    const isBlankManual = !slot.propertyId;
     const headerColor = isBlankManual ? '#d9d9d9' : (rentLevel?.color || (prop ? typeColors[prop.type] : config.color) || '#d9d9d9');
     
     return (
@@ -823,7 +925,7 @@ const MapManager: React.FC = () => {
           e.dataTransfer.setData('offsetX', ((e.clientX - rect.left) / zoom).toString());
           e.dataTransfer.setData('offsetY', ((e.clientY - rect.top) / zoom).toString());
           e.dataTransfer.setData('sourceIndex', index.toString());
-          e.dataTransfer.setData('slotType', slot.type);
+          e.dataTransfer.setData('slotType', effectiveType);
         }}
         onClick={(e) => {
           e.stopPropagation();
@@ -923,9 +1025,12 @@ const MapManager: React.FC = () => {
           padding: '4px',
           zIndex: 1
         }}>
-          {slot.icon ? (() => {
-            const iconValue = Array.isArray(slot.icon) ? slot.icon[0] : slot.icon;
-            const isUrl = typeof iconValue === 'string' && (iconValue.startsWith('http') || iconValue.startsWith('/') || iconValue.startsWith('data:'));
+          {(() => {
+            const iconValue = prop?.icon;
+            if (!iconValue) return null;
+            
+            const firstIcon = Array.isArray(iconValue) ? iconValue[0] : iconValue;
+            const isUrl = typeof firstIcon === 'string' && (firstIcon.startsWith('http') || firstIcon.startsWith('/') || firstIcon.startsWith('data:'));
             
             const iconStyle: React.CSSProperties = {
               width: '100%',
@@ -936,21 +1041,17 @@ const MapManager: React.FC = () => {
             };
 
             if (isUrl) {
-              return <img src={iconValue} style={{ ...iconStyle, objectFit: 'contain' }} alt="logo" />;
-            } else if (typeof iconValue === 'string' && iconValue.trim().startsWith('<svg')) {
+              return <img src={firstIcon} style={{ ...iconStyle, objectFit: 'contain' }} alt="logo" />;
+            } else if (typeof firstIcon === 'string' && firstIcon.trim().startsWith('<svg')) {
               return (
                 <div 
                   style={iconStyle}
-                  dangerouslySetInnerHTML={{ __html: iconValue }}
+                  dangerouslySetInnerHTML={{ __html: firstIcon }}
                 />
               );
             }
-            return (
-              <div style={{ ...iconStyle, fontSize: '20px', color: '#bfbfbf', opacity: 0.3 }}>
-                {iconValue}
-              </div>
-            );
-          })() : null}
+            return null;
+          })()}
         </div>
 
         {/* 底部名称底色条 */}
@@ -976,7 +1077,7 @@ const MapManager: React.FC = () => {
               textAlign: 'center',
               textShadow: '0 1px 2px rgba(0,0,0,0.2)'
             }}>
-              {slot.name}
+              {prop?.name || slot.name || (isBlankManual ? '空白格' : '')}
             </div>
           </div>
         )}
@@ -1031,7 +1132,10 @@ const MapManager: React.FC = () => {
     const pathChain: { from: MapSlot, to: MapSlot, dir: typeof directions[0] }[] = [];
     
     // 找到起点
-    let currentSlot = currentMap.slots.find(s => s && s.type === 'start');
+    let currentSlot = currentMap.slots.find(s => {
+      const p = properties.find(prop => prop.id === s.propertyId);
+      return p ? p.type === 'start' : s.type === 'start';
+    });
     let pathEnd = currentSlot;
 
     if (currentSlot) {
@@ -1220,11 +1324,19 @@ const MapManager: React.FC = () => {
                 </Button>
                 <Button 
                   type="primary" 
+                  ghost
+                  icon={<CloudUploadOutlined />} 
+                  onClick={handleExportSnapshot}
+                >
+                  导出游玩快照
+                </Button>
+                <Button 
+                  type="primary" 
                   icon={<SaveOutlined />} 
                   onClick={handleSaveEditor}
                   loading={isSaving}
                 >
-                  保存地图布局
+                  保存设计草稿
                 </Button>
               </Space>
             </div>
@@ -1383,6 +1495,26 @@ const MapManager: React.FC = () => {
         return <Tag icon={<RocketOutlined />}>{theme?.name || '未知主题'}</Tag>;
       }
     },
+    { 
+      title: '状态', 
+      key: 'status',
+      render: (record: Map) => {
+        const mapSnapshots = snapshots.filter(s => s.mapId === record.id);
+        if (mapSnapshots.length === 0) {
+          return <Tag icon={<ClockCircleOutlined />} color="default">未导出</Tag>;
+        }
+        // 显示最新一个快照的时间
+        const latest = mapSnapshots.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())[0];
+        return (
+          <Space direction="vertical" size={0}>
+            <Tag icon={<CheckCircleOutlined />} color="success">已发布 ({mapSnapshots.length})</Tag>
+            <Text type="secondary" style={{ fontSize: '10px' }}>
+              最新: {new Date(latest.publishedAt).toLocaleString()}
+            </Text>
+          </Space>
+        );
+      }
+    },
     {
       title: '操作',
       key: 'action',
@@ -1443,8 +1575,16 @@ const MapManager: React.FC = () => {
         destroyOnClose
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
-          <Form.Item name="name" label="地图名称" rules={[{ required: true }]}>
-            <Input placeholder="例如: 经典环球之旅" />
+          <Form.Item 
+            name="name" 
+            label="地图名称" 
+            rules={[{ required: true }]}
+            tooltip={editingMap && snapshots.some(s => s.mapId === editingMap.id) ? "该地图已有导出的快照版本，不可修改名称" : null}
+          >
+            <Input 
+              placeholder="例如: 经典环球之旅" 
+              disabled={!!(editingMap && snapshots.some(s => s.mapId === editingMap.id))}
+            />
           </Form.Item>
           <Form.Item name="themeId" label="所属主题" rules={[{ required: true }]}>
             <Select disabled={!!editingMap}>

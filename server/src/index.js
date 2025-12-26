@@ -4,6 +4,8 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import { JSONFilePreset } from 'lowdb/node';
 import { v4 as uuidv4 } from 'uuid';
+import fs from 'fs/promises';
+import path from 'path';
 
 // --- 数据库初始化 ---
 const dbProperties = await JSONFilePreset('data/properties.json', { properties: [] });
@@ -11,6 +13,10 @@ const dbMaps = await JSONFilePreset('data/maps.json', { maps: [] });
 const dbCards = await JSONFilePreset('data/cards.json', { cards: [] });
 const dbThemes = await JSONFilePreset('data/themes.json', { themes: [] });
 const dbRentLevels = await JSONFilePreset('data/rent_levels.json', { levels: [] });
+
+// 确保快照目录存在
+const SNAPSHOTS_DIR = 'data/snapshots';
+await fs.mkdir(SNAPSHOTS_DIR, { recursive: true });
 
 const app = express();
 app.use(cors());
@@ -207,6 +213,75 @@ app.delete('/api/maps/:id', async (req, res) => {
   dbMaps.data.maps = dbMaps.data.maps.filter(m => m.id !== id);
   await dbMaps.write();
   res.status(204).send();
+});
+
+// --- 快照 API ---
+app.get('/api/snapshots', async (req, res) => {
+  try {
+    const files = await fs.readdir(SNAPSHOTS_DIR);
+    const snapshots = await Promise.all(
+      files
+        .filter(f => f.endsWith('.json'))
+        .map(async f => {
+          const content = await fs.readFile(path.join(SNAPSHOTS_DIR, f), 'utf-8');
+          return JSON.parse(content);
+        })
+    );
+    res.json(snapshots);
+  } catch (error) {
+    res.status(500).json({ message: '读取快照失败' });
+  }
+});
+
+app.get('/api/snapshots/:id', async (req, res) => {
+  try {
+    const filePath = path.join(SNAPSHOTS_DIR, `${req.params.id}.json`);
+    const content = await fs.readFile(filePath, 'utf-8');
+    res.json(JSON.parse(content));
+  } catch (error) {
+    res.status(404).json({ message: '快照不存在' });
+  }
+});
+
+app.post('/api/snapshots', async (req, res) => {
+  try {
+    const { mapId, slots, name, version, themeId, theme, rentLevels, properties, cards } = req.body;
+    
+    // 每次导出生成全新 ID，保存为独立文件
+    const id = generateId('snapshot');
+    const snapshot = {
+      id,
+      mapId,
+      name,
+      version: version || 'v1.0.0',
+      themeId,
+      theme,
+      rentLevels,
+      properties,
+      cards,
+      slots,
+      publishedAt: new Date().toISOString()
+    };
+
+    await fs.writeFile(
+      path.join(SNAPSHOTS_DIR, `${id}.json`),
+      JSON.stringify(snapshot, null, 2)
+    );
+    
+    res.json(snapshot);
+  } catch (error) {
+    res.status(500).json({ message: '保存快照失败' });
+  }
+});
+
+app.delete('/api/snapshots/:id', async (req, res) => {
+  try {
+    const filePath = path.join(SNAPSHOTS_DIR, `${req.params.id}.json`);
+    await fs.unlink(filePath);
+    res.status(204).send();
+  } catch (error) {
+    res.status(404).json({ message: '快照不存在' });
+  }
 });
 
 // --- 卡片 API ---
