@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { 
   Table, Button, Modal, Form, Input, InputNumber, 
   Space, Tag, Select, Typography, 
-  Popconfirm, Tabs, Layout, App, Segmented
+  Popconfirm, Tabs, Layout, App, Segmented, Tooltip
 } from 'antd';
 import { 
   EnvironmentOutlined, 
@@ -14,11 +14,12 @@ import {
   RocketOutlined,
   SaveOutlined,
   ArrowLeftOutlined,
+  ArrowRightOutlined,
   UndoOutlined,
   FilterOutlined,
   InfoCircleOutlined
 } from '@ant-design/icons';
-import { type Map, MapService } from '../services/MapService';
+import { type Map, type MapSlot, MapService } from '../services/MapService';
 import { type Theme, ThemeService } from '../services/ThemeService';
 import { type Property, PropertyService } from '../services/PropertyService';
 import { type RentLevel, RentLevelService } from '../services/RentLevelService';
@@ -47,6 +48,30 @@ const MapManager: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [libraryFilter, setLibraryFilter] = useState<'builtin' | 'custom'>('builtin');
   const [secondaryFilter, setSecondaryFilter] = useState<string>('all');
+  const [showArrows, setShowArrows] = useState(true);
+  const [selectedSlotIndex, setSelectedSlotIndex] = useState<number | null>(null);
+
+  // 动画样式
+  useEffect(() => {
+    const styleId = 'map-animation-styles';
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.innerHTML = `
+        @keyframes breath-single {
+          0% { transform: scale(1); opacity: 0.2; }
+          50% { transform: scale(1.12); opacity: 0.8; }
+          100% { transform: scale(1); opacity: 0.2; }
+        }
+        .potential-exit {
+          animation: breath-single 2s infinite ease-in-out;
+          transform-origin: center;
+          transform-box: fill-box;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }, []);
 
   // 画板变换状态
   const [zoom, setZoom] = useState(1);
@@ -117,7 +142,13 @@ const MapManager: React.FC = () => {
     if (editingMapId && maps.length > 0 && !isEditorOpen && !currentMap) {
       const targetMap = maps.find(m => m.id === editingMapId);
       if (targetMap) {
-        setCurrentMap(JSON.parse(JSON.stringify(targetMap)));
+        // 确保 ID 补齐
+        const mapCopy = JSON.parse(JSON.stringify(targetMap));
+        mapCopy.slots = mapCopy.slots.map((slot: any, idx: number) => ({
+          ...slot,
+          id: slot.id || `slot-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 9)}`
+        }));
+        setCurrentMap(mapCopy);
         setIsEditorOpen(true);
         setHistory([]);
       }
@@ -175,8 +206,67 @@ const MapManager: React.FC = () => {
     }
   };
 
+  // 辅助函数：根据规则重排地块顺序
+  const reorderSlots = (slots: any[]) => {
+    if (!slots || slots.length <= 1) return slots || [];
+    
+    const activeSlots = slots.filter(s => s && s.type !== 'empty');
+    if (activeSlots.length === 0) return slots;
+
+    // 1. 寻找起点，如果没有起点则默认使用第一个地块作为根
+    let startIdx = activeSlots.findIndex(s => s && s.type === 'start');
+    if (startIdx === -1) startIdx = 0; 
+
+    // 2. 将选定的根节点移到第一位
+    const newOrder: any[] = [];
+    const remaining = [...activeSlots];
+    const startSlot = remaining.splice(startIdx, 1)[0];
+    if (!startSlot) return slots;
+    newOrder.push(startSlot);
+
+    // 3. 启发式邻近排序：尝试沿着逻辑连接或物理相邻关系寻找下一个地块
+    let current = startSlot;
+    while (remaining.length > 0) {
+      // 优先寻找显式指定的逻辑连接
+      let nextIdx = -1;
+      if (current.nextSlotId) {
+        nextIdx = remaining.findIndex(s => s && s.id === current.nextSlotId);
+      }
+
+      // 如果没有逻辑连接，则寻找物理邻居
+      if (nextIdx === -1) {
+        nextIdx = remaining.findIndex(s => {
+          if (!s) return false;
+          const dx = Math.abs((s.x || 0) - (current.x || 0));
+          const dy = Math.abs((s.y || 0) - (current.y || 0));
+          // 仅十字相邻，放宽判定范围到 10 像素
+          return (Math.abs(dx - GRID_SIZE) < 10 && dy < 10) || 
+                 (Math.abs(dy - GRID_SIZE) < 10 && dx < 10);
+        });
+      }
+
+      if (nextIdx !== -1) {
+        current = remaining.splice(nextIdx, 1)[0];
+        if (current) newOrder.push(current);
+      } else {
+        // 找不到连接了，将剩下的直接追加到末尾（断裂路径）
+        newOrder.push(...remaining);
+        break;
+      }
+    }
+
+    return newOrder;
+  };
+
   const handleOpenEditor = (map: Map) => {
-    setCurrentMap(JSON.parse(JSON.stringify(map))); // 深拷贝防止直接修改
+    // 确保所有地块都有唯一 ID（如果缺失则补齐）
+    const mapCopy = JSON.parse(JSON.stringify(map));
+    mapCopy.slots = mapCopy.slots.map((slot: any, idx: number) => ({
+      ...slot,
+      id: slot.id || `slot-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 9)}`
+    }));
+    
+    setCurrentMap(mapCopy);
     setHistory([]); // 清空历史记录
     setIsEditorOpen(true);
     setSearchParams({ editor: map.id }); // 更新 URL，支持刷新恢复
@@ -348,8 +438,8 @@ const MapManager: React.FC = () => {
                   }}
                 >
                   {opt.label}
-                </div>
-              ))}
+            </div>
+          ))}
             </div>
           </div>
         </div>
@@ -381,7 +471,7 @@ const MapManager: React.FC = () => {
                     e.dataTransfer.setData('sourceIndex', '');
               }}
               style={{
-                    cursor: 'grab', 
+                cursor: 'grab',
                     width: GRID_SIZE,
                     height: GRID_SIZE,
                 border: '1px solid #f0f0f0',
@@ -426,7 +516,7 @@ const MapManager: React.FC = () => {
                       pointerEvents: 'none'
                     }}>
                       ${item.detail.price.toLocaleString()}
-                    </div>
+              </div>
                   )}
 
                   {/* Logo 区域 */}
@@ -464,7 +554,7 @@ const MapManager: React.FC = () => {
                       return (
                         <div style={{ ...iconStyle, fontSize: '20px', color: '#bfbfbf', opacity: 0.3 }}>
                           {iconValue}
-                        </div>
+            </div>
                       );
                     })()}
                   </div>
@@ -541,33 +631,34 @@ const MapManager: React.FC = () => {
     
     if (currentMap) {
       let newSlots = [...currentMap.slots];
-      const targetSlotIndex = newSlots.findIndex(s => s.x === x && s.y === y && s.type !== 'empty');
+      const targetSlotIndex = newSlots.findIndex(s => s && s.x === x && s.y === y && s.type !== 'empty');
 
       if (sourceIndex !== '') {
         // 移动已有地块
         const idx = parseInt(sourceIndex);
-        if (targetSlotIndex !== -1 && targetSlotIndex !== idx) {
-          // 目标位置已有地块：执行交换位置
-          const originalX = newSlots[idx].x;
-          const originalY = newSlots[idx].y;
-          newSlots[targetSlotIndex] = { ...newSlots[targetSlotIndex], x: originalX, y: originalY };
+        if (newSlots[idx]) {
+          if (targetSlotIndex !== -1 && targetSlotIndex !== idx) {
+            // 目标位置已有地块：执行交换位置
+            const originalX = newSlots[idx].x;
+            const originalY = newSlots[idx].y;
+            newSlots[targetSlotIndex] = { ...newSlots[targetSlotIndex], x: originalX, y: originalY };
+          }
+          newSlots[idx] = { ...newSlots[idx], x, y };
         }
-        newSlots[idx] = { ...newSlots[idx], x, y };
       } else if (propId) {
-        // 新增地块：如果目标位置已有地块，尝试寻找最近的空位移动它
+        // 新增地块
         if (targetSlotIndex !== -1) {
-          // 简单逻辑：如果被占用了，寻找周围 8 个方向最近的空位
-          const directions = [
+          const shiftDirections = [
             { dx: 1, dy: 0 }, { dx: -1, dy: 0 }, { dx: 0, dy: 1 }, { dx: 0, dy: -1 },
             { dx: 1, dy: 1 }, { dx: 1, dy: -1 }, { dx: -1, dy: 1 }, { dx: -1, dy: -1 }
           ];
           
           let foundEmpty = false;
           for (let radius = 1; radius <= 3; radius++) {
-            for (const d of directions) {
+            for (const d of shiftDirections) {
               const nx = x + d.dx * radius * GRID_SIZE;
               const ny = y + d.dy * radius * GRID_SIZE;
-              if (!newSlots.some(s => s.x === nx && s.y === ny && s.type !== 'empty')) {
+              if (!newSlots.some(s => s && s.x === nx && s.y === ny && s.type !== 'empty')) {
                 newSlots[targetSlotIndex] = { ...newSlots[targetSlotIndex], x: nx, y: ny };
                 foundEmpty = true;
                 break;
@@ -577,7 +668,6 @@ const MapManager: React.FC = () => {
           }
         }
 
-        // 严格从 properties 匹配新增地块
         const prop = properties.find(p => p.id === propId);
         if (prop) {
           let slotType: any = prop.type;
@@ -585,7 +675,9 @@ const MapManager: React.FC = () => {
             slotType = 'property';
           }
           
-          const newSlot: any = { 
+          const newId = `slot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          const newSlot: MapSlot = { 
+            id: newId,
             x, 
             y, 
             type: slotType,
@@ -593,18 +685,100 @@ const MapManager: React.FC = () => {
             name: prop.name,
             icon: prop.icon
           };
-          newSlots = newSlots.filter(s => s.type !== 'empty');
+          newSlots = newSlots.filter(s => s && s.type !== 'empty');
           newSlots.push(newSlot);
         }
       }
+
+      // --- 路径全局连通性自愈系统 ---
+      let iterations = 0;
+      const MAX_PATH_LENGTH = 100;
       
-      updateMapWithHistory({ ...currentMap, slots: newSlots });
+      const findSlotInNewSlots = (id: string) => newSlots.find(s => s && s.id === id);
+      const getStartSlot = () => newSlots.find(s => s && s.type === 'start');
+
+      const visited = new Set<string>();
+      let cursor = getStartSlot();
+      const startId = cursor?.id;
+      
+      while (cursor && iterations < MAX_PATH_LENGTH) {
+        iterations++;
+        visited.add(cursor.id);
+        
+        // 尝试寻找下一个逻辑连接
+        let next: MapSlot | undefined = cursor.nextSlotId ? findSlotInNewSlots(cursor.nextSlotId) : undefined;
+        
+        // 如果物理上断开了，则强制清除逻辑连接
+        if (next) {
+          const dx = Math.abs((next.x || 0) - (cursor.x || 0));
+          const dy = Math.abs((next.y || 0) - (cursor.y || 0));
+          const isAdjacent = (Math.abs(dx - GRID_SIZE) < 10 && dy < 10) || (Math.abs(dy - GRID_SIZE) < 10 && dx < 10);
+          if (!isAdjacent) {
+            const idx = newSlots.findIndex(s => s && s.id === cursor!.id);
+            if (idx !== -1) {
+              newSlots[idx] = { ...newSlots[idx], nextSlotId: undefined };
+              // 更新 cursor 以反映最新的 nextSlotId
+              cursor = newSlots[idx];
+            }
+            next = undefined;
+          }
+        }
+        
+        // 如果当前没有逻辑出口，尝试寻找合适的邻居自动握手
+        if (!next) {
+          const activeSlots = newSlots.filter(s => s && s.type !== 'empty');
+          const neighbors = activeSlots.filter(s => {
+            if (!s) return false;
+            const dx = Math.abs((s.x || 0) - (cursor!.x || 0));
+            const dy = Math.abs((s.y || 0) - (cursor!.y || 0));
+            const isAdj = (Math.abs(dx - GRID_SIZE) < 10 && dy < 10) || (Math.abs(dy - GRID_SIZE) < 10 && dx < 10);
+            
+            if (!isAdj) return false;
+
+            // 特殊规则：允许连回起点形成闭合回路（至少需要3个地块才能成环）
+            if (s.type === 'start' && visited.size >= 3) return true;
+            
+            // 排除已经访问过的节点
+            return !visited.has(s.id);
+          });
+          
+          let selectedNeighbor = null;
+          if (neighbors.length === 1) {
+            selectedNeighbor = neighbors[0];
+          } else if (neighbors.length > 1) {
+            // 如果有多个邻居，优先选择起点以形成闭环
+            const startNeighbor = neighbors.find(n => n.type === 'start');
+            if (startNeighbor) {
+              selectedNeighbor = startNeighbor;
+            }
+          }
+
+          if (selectedNeighbor) {
+            const idx = newSlots.findIndex(s => s && s.id === cursor!.id);
+            if (idx !== -1) {
+              newSlots[idx] = { ...newSlots[idx], nextSlotId: selectedNeighbor.id };
+              next = selectedNeighbor;
+              cursor = newSlots[idx];
+            }
+          }
+        }
+        
+        // 步进到下一格（如果回到起点，则终止循环）
+        if (next && next.id !== startId && !visited.has(next.id)) {
+          cursor = next;
+        } else {
+          cursor = undefined;
+        }
+      }
+
+      updateMapWithHistory({ ...currentMap, slots: reorderSlots(newSlots) });
     }
   };
 
   const renderSlot = (index: number) => {
-    const slot = currentMap?.slots[index];
-    if (!slot || slot.type === 'empty') return null;
+    if (!currentMap || !currentMap.slots) return null;
+    const slot = currentMap.slots[index];
+    if (!slot || slot.type === 'empty' || !slot.id) return null;
     
     const typeConfig: Record<string, { color: string, bg: string, label: string }> = {
       empty: { color: '#d9d9d9', bg: '#fafafa', label: '空' },
@@ -627,12 +801,11 @@ const MapManager: React.FC = () => {
     const typeColors: Record<string, string> = {
       start: '#52c41a', jail: '#ff4d4f', fate: '#722ed1', chance: '#fa8c16', station: '#595959', utility: '#faad14', property: '#1890ff', normal: '#1890ff'
     };
-    const headerColor = rentLevel?.color || (prop ? typeColors[prop.type] : config.color);
-    const isCustomProperty = slot.type === 'property';
+    const headerColor = rentLevel?.color || (prop ? typeColors[prop.type] : config.color) || '#d9d9d9';
     
     return (
       <div 
-        key={index}
+        key={slot.id}
         data-slot="true"
         draggable
         onDragStart={(e) => {
@@ -643,9 +816,13 @@ const MapManager: React.FC = () => {
           e.dataTransfer.setData('sourceIndex', index.toString());
           e.dataTransfer.setData('slotType', slot.type);
         }}
+        onClick={(e) => {
+          e.stopPropagation();
+          setSelectedSlotIndex(selectedSlotIndex === index ? null : index);
+        }}
         style={{
-          width: GRID_SIZE,
-          height: GRID_SIZE,
+          width: GRID_SIZE - 8,
+          height: GRID_SIZE - 8,
           borderRadius: '4px',
           display: 'flex',
           flexDirection: 'column',
@@ -653,15 +830,17 @@ const MapManager: React.FC = () => {
           justifyContent: 'space-between',
           background: `linear-gradient(${headerColor}15, ${headerColor}15), #fff`,
           position: 'absolute',
-          left: (slot.x || 0) - originX,
-          top: (slot.y || 0) - originY,
+          left: (slot.x || 0) - originX + 4,
+          top: (slot.y || 0) - originY + 4,
           textAlign: 'center',
-          transition: 'all 0.2s ease',
-          cursor: 'move',
-          zIndex: 10,
-          boxShadow: '0 2px 4px rgba(0,0,0,0.04)',
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', // 增加平滑动画
+          cursor: 'pointer',
+          zIndex: selectedSlotIndex === index ? 30 : 10,
+          boxShadow: selectedSlotIndex === index 
+            ? `0 0 0 3px #1890ff, 0 4px 12px rgba(0,0,0,0.2)` 
+            : '0 2px 4px rgba(0,0,0,0.04)',
           overflow: 'hidden',
-          border: '1.5px solid rgba(0,0,0,0.15)',
+          border: selectedSlotIndex === index ? 'none' : '1.5px solid rgba(0,0,0,0.15)',
           flexShrink: 0
         }}
       >
@@ -711,9 +890,13 @@ const MapManager: React.FC = () => {
           }}
           onClick={(e) => {
             e.stopPropagation();
-                const newSlots = [...(currentMap?.slots || [])];
-            newSlots.splice(index, 1);
-            updateMapWithHistory({ ...currentMap!, slots: newSlots });
+            if (!currentMap || !currentMap.slots) return;
+            const deletedSlot = currentMap.slots[index];
+            if (!deletedSlot) return;
+            const newSlots = currentMap.slots
+              .filter((_, idx) => idx !== index)
+              .map(s => s && s.nextSlotId === deletedSlot.id ? { ...s, nextSlotId: undefined } : s);
+            updateMapWithHistory({ ...currentMap, slots: newSlots });
           }}
         />
 
@@ -730,7 +913,7 @@ const MapManager: React.FC = () => {
         }}>
           {slot.icon ? (() => {
             const iconValue = Array.isArray(slot.icon) ? slot.icon[0] : slot.icon;
-            const isUrl = iconValue && (iconValue.startsWith('http') || iconValue.startsWith('/') || iconValue.startsWith('data:'));
+            const isUrl = typeof iconValue === 'string' && (iconValue.startsWith('http') || iconValue.startsWith('/') || iconValue.startsWith('data:'));
             
             const iconStyle: React.CSSProperties = {
               width: '100%',
@@ -742,7 +925,7 @@ const MapManager: React.FC = () => {
 
             if (isUrl) {
               return <img src={iconValue} style={{ ...iconStyle, objectFit: 'contain' }} alt="logo" />;
-            } else if (iconValue && iconValue.trim().startsWith('<svg')) {
+            } else if (typeof iconValue === 'string' && iconValue.trim().startsWith('<svg')) {
               return (
                 <div 
                   style={iconStyle}
@@ -787,6 +970,198 @@ const MapManager: React.FC = () => {
     );
   };
 
+  const handleConnect = (fromId: string, toId: string) => {
+    if (!currentMap || !fromId || !toId || fromId === toId) return;
+    
+    const newSlots = currentMap.slots.map(s => {
+      // 核心改进：互斥逻辑
+      // 如果目标地块当前正指向发起地块，则强制清除目标地块的出口
+      if (s.id === toId && s.nextSlotId === fromId) {
+        return { ...s, nextSlotId: undefined };
+      }
+      // 设置发起地块的出口
+      if (s.id === fromId) {
+        return { ...s, nextSlotId: toId };
+      }
+      return s;
+    });
+    
+    // 只更新数据，不重新排列数组顺序，避免影响其他地块的默认出口
+    updateMapWithHistory({ ...currentMap, slots: newSlots });
+    message.success('已指定出口');
+  };
+
+  const renderArrows = () => {
+    if (!showArrows || !currentMap) return null;
+
+    const getSlotInfoAt = (x: number, y: number) => {
+      if (!currentMap || !currentMap.slots) return null;
+      const idx = currentMap.slots.findIndex(s => 
+        s && 
+        Math.abs((s.x || 0) - x) < 5 && 
+        Math.abs((s.y || 0) - y) < 5 && 
+        s.type !== 'empty'
+      );
+      return idx !== -1 ? { slot: currentMap.slots[idx], index: idx } : null;
+    };
+
+    const directions = [
+      { dx: GRID_SIZE, dy: 0, unitX: 1, unitY: 0 },
+      { dx: -GRID_SIZE, dy: 0, unitX: -1, unitY: 0 },
+      { dx: 0, dy: GRID_SIZE, unitX: 0, unitY: 1 },
+      { dx: 0, dy: -GRID_SIZE, unitX: 0, unitY: -1 }
+    ];
+
+    // 1. 寻找路径链
+    const pathIds = new Set<string>();
+    const pathChain: { from: MapSlot, to: MapSlot, dir: typeof directions[0] }[] = [];
+    
+    // 找到起点
+    let currentSlot = currentMap.slots.find(s => s && s.type === 'start');
+    let pathEnd = currentSlot;
+
+    if (currentSlot) {
+      pathIds.add(currentSlot.id);
+      let loopCount = 0;
+      const MAX_PATH = 200;
+      
+      while (currentSlot?.nextSlotId && loopCount < MAX_PATH) {
+        loopCount++;
+        const nextId: string = currentSlot.nextSlotId;
+        const nextSlot: MapSlot | undefined = currentMap.slots.find(s => s && s.id === nextId);
+        
+        if (nextSlot) {
+          // 判定方向
+          const dx = (nextSlot.x || 0) - (currentSlot.x || 0);
+          const dy = (nextSlot.y || 0) - (currentSlot.y || 0);
+          const dir = directions.find(d => Math.abs(d.dx - dx) < 10 && Math.abs(d.dy - dy) < 10);
+          
+          if (dir) {
+            pathChain.push({ from: currentSlot, to: nextSlot, dir });
+            
+            // 如果连回了已访问的地块（形成闭环）
+            if (pathIds.has(nextSlot.id)) {
+              pathEnd = undefined; // 闭合路径不需要末端律动
+              break;
+            }
+            
+            pathIds.add(nextSlot.id);
+            currentSlot = nextSlot;
+            pathEnd = nextSlot;
+          } else {
+            break; // 不相邻，路径中断
+          }
+        } else {
+          break; // 找不到，路径中断
+        }
+      }
+    }
+
+    return (
+      <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 40 }}>
+        {/* A. 渲染已确认的路径 (红色通道) */}
+        {pathChain.map((link, idx) => {
+          const sX = (link.from.x || 0) - originX + GRID_SIZE / 2;
+          const sY = (link.from.y || 0) - originY + GRID_SIZE / 2;
+          const half = GRID_SIZE / 2;
+          const gapX = sX + link.dir.unitX * half;
+          const gapY = sY + link.dir.unitY * half;
+          const rectW = link.dir.unitX ? 8 : GRID_SIZE - 8;
+          const rectH = link.dir.unitY ? 8 : GRID_SIZE - 8;
+
+          return (
+            <g key={`path-link-${idx}`}>
+              <rect
+                x={gapX - rectW / 2}
+                y={gapY - rectH / 2}
+                width={rectW}
+                height={rectH}
+                fill="#ff4d4f"
+                opacity={0.6}
+                rx={2}
+                style={{ filter: 'drop-shadow(0 0 4px rgba(255,77,79,0.6))' }}
+              />
+              {/* 指向性箭头 */}
+              <polygon 
+                points={`
+                  ${gapX + link.dir.unitX * 3},${gapY + link.dir.unitY * 3} 
+                  ${gapX - link.dir.unitX * 2 + link.dir.unitY * 4},${gapY - link.dir.unitY * 2 - link.dir.unitX * 4} 
+                  ${gapX - link.dir.unitX * 2 - link.dir.unitY * 4},${gapY - link.dir.unitY * 2 + link.dir.unitX * 4}
+                `}
+                fill="#ff4d4f"
+              />
+            </g>
+          );
+        })}
+
+        {/* B. 渲染路径末端的潜在出口 (蓝色律动) */}
+        {pathEnd && directions.map((dir, dIdx) => {
+          const neighborInfo = getSlotInfoAt((pathEnd!.x || 0) + dir.dx, (pathEnd!.y || 0) + dir.dy);
+          
+          // 1. 检查是否已经是已确认的出口（防止在已有红色的地方显示蓝色）
+          const isOutgoing = pathChain.some(link => 
+            link.from.id === pathEnd!.id && 
+            Math.abs(link.dir.dx - dir.dx) < 5 && 
+            Math.abs(link.dir.dy - dir.dy) < 5
+          );
+          if (isOutgoing) return null;
+
+          // 2. 核心修复：检查是否是当前路径的入口（防止在来路显示蓝色）
+          const isIncoming = pathChain.some(link => 
+            link.to.id === pathEnd!.id && 
+            Math.abs(link.dir.dx + dir.dx) < 5 && 
+            Math.abs(link.dir.dy + dir.dy) < 5
+          );
+          if (isIncoming) return null;
+
+          const sX = (pathEnd!.x || 0) - originX + GRID_SIZE / 2;
+          const sY = (pathEnd!.y || 0) - originY + GRID_SIZE / 2;
+          const half = GRID_SIZE / 2;
+          const gapX = sX + dir.unitX * half;
+          const gapY = sY + dir.unitY * half;
+          const rectW = dir.unitX ? 8 : GRID_SIZE - 8;
+          const rectH = dir.unitY ? 8 : GRID_SIZE - 8;
+
+          return (
+            <g 
+              key={`potential-${pathEnd!.id}-${dIdx}`}
+              style={{ cursor: neighborInfo ? 'pointer' : 'default', pointerEvents: neighborInfo ? 'auto' : 'none' }}
+              onClick={(e) => {
+                if (neighborInfo) {
+                  e.stopPropagation();
+                  handleConnect(pathEnd!.id!, neighborInfo.slot.id!);
+                }
+              }}
+            >
+              <rect
+                className="potential-exit"
+                x={gapX - rectW / 2}
+                y={gapY - rectH / 2}
+                width={rectW}
+                height={rectH}
+                fill="#1890ff"
+                rx={2}
+                style={{ 
+                  filter: 'drop-shadow(0 0 6px rgba(24,144,255,0.8))'
+                }}
+              />
+              {/* 指向箭头 */}
+              <polygon 
+                points={`
+                  ${gapX + dir.unitX * 3},${gapY + dir.unitY * 3} 
+                  ${gapX - dir.unitX * 2 + dir.unitY * 4},${gapY - dir.unitY * 2 - dir.unitX * 4} 
+                  ${gapX - dir.unitX * 2 - dir.unitY * 4},${gapY - dir.unitY * 2 + dir.unitX * 4}
+                `}
+                fill="#1890ff"
+                opacity={0.8}
+              />
+            </g>
+          );
+        })}
+      </svg>
+    );
+  };
+
   if (isEditorOpen) {
     return (
       <Layout style={{ 
@@ -807,6 +1182,13 @@ const MapManager: React.FC = () => {
             </Space>
               <Space>
                 <Text type="secondary">提示: 拖拽左侧地块到网格中，可自由移动地块</Text>
+                <Tooltip title="显示/隐藏 路径箭头">
+                  <Button 
+                    icon={<ArrowRightOutlined />} 
+                    type={showArrows ? "primary" : "default"}
+                    onClick={() => setShowArrows(!showArrows)}
+                  />
+                </Tooltip>
                 <Button 
                   icon={<UndoOutlined />} 
                   onClick={handleUndo} 
@@ -896,6 +1278,7 @@ const MapManager: React.FC = () => {
             <div 
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
+              onClick={() => setSelectedSlotIndex(null)}
               data-canvas="true"
               style={{ 
                 width: canvasWidth,
@@ -918,6 +1301,7 @@ const MapManager: React.FC = () => {
               }}
             >
               {currentMap?.slots.map((_, i) => renderSlot(i))}
+              {renderArrows()}
             </div>
           </div>
         </Content>
@@ -1028,4 +1412,5 @@ const MapManager: React.FC = () => {
 };
 
 export default MapManager;
+
 

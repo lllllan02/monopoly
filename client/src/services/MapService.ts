@@ -1,4 +1,5 @@
 export interface MapSlot {
+  id: string; // 地块实例的唯一 ID
   type: 'property' | 'start' | 'jail' | 'fate' | 'chance' | 'tax' | 'chest' | 'empty';
   propertyId?: string; // 如果是地块，关联具体的 tile_id
   name?: string; // 显示名称
@@ -6,6 +7,7 @@ export interface MapSlot {
   x?: number; // 横坐标
   y?: number; // 纵坐标
   icon?: string; // 显示图标
+  nextSlotId?: string; // 指定的下一个地块的 ID
 }
 
 export interface Map {
