@@ -34,6 +34,12 @@ const EconomicManager: React.FC = () => {
   const [form] = Form.useForm();
   const [themeForm] = Form.useForm();
 
+  const PRESET_COLORS = [
+    '#f5222d', '#fa541c', '#fa8c16', '#faad14', '#fadb14', '#a0d911', 
+    '#52c41a', '#13c2c2', '#1890ff', '#2f54eb', '#722ed1', '#eb2f96',
+    '#8c8c8c', '#595959', '#434343', '#8b4513'
+  ];
+
   const fetchData = async () => {
     try {
       const [levelsData, themesData] = await Promise.all([
@@ -132,6 +138,8 @@ const EconomicManager: React.FC = () => {
   };
 
   const maxHouses = Form.useWatch('maxHouses', form);
+  const currentColor = Form.useWatch('color', form); // 监听颜色变化以实时更新选中状态
+
   useEffect(() => {
     if (maxHouses !== undefined) {
       const currentCurve = form.getFieldValue('rentCurve') || [];
@@ -481,9 +489,24 @@ const EconomicManager: React.FC = () => {
             </Col>
             <Col span={10}>
               <Form.Item name="color" label={<span style={{ fontWeight: 600 }}>视觉标识色</span>} rules={[{ required: true }]}>
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                  <Input type="color" style={{ width: 64, height: 40, padding: 2, borderRadius: '4px' }} />
-                  <Text type="secondary" style={{ fontSize: '12px', lineHeight: '1.2' }}>用于棋盘格子<br/>与资产卡片</Text>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, maxWidth: 200 }}>
+                  {PRESET_COLORS.map(c => (
+                    <div
+                      key={c}
+                      onClick={() => form.setFieldsValue({ color: c })}
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: '4px',
+                        background: c,
+                        cursor: 'pointer',
+                        border: currentColor === c ? '2px solid #52c41a' : '1px solid rgba(0,0,0,0.1)',
+                        boxShadow: currentColor === c ? '0 0 8px rgba(82, 196, 26, 0.4)' : 'none',
+                        transform: currentColor === c ? 'scale(1.1)' : 'scale(1)',
+                        transition: 'all 0.2s'
+                      }}
+                    />
+                  ))}
                 </div>
               </Form.Item>
             </Col>
